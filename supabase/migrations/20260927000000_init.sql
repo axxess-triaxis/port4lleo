@@ -1,4 +1,4 @@
--- builderscore initial schema.
+-- port4leo initial schema.
 -- Writes to snapshots / tokens happen server-side with the secret (service-role) key only.
 
 create table public.profiles (

@@ -1,4 +1,4 @@
-# BuilderScore
+# PORT4LEO
 
 An open-source app that turns your GitHub account into a builder portfolio and dashboard. It shows what you shipped and how you ship, and gives you a transparent **Builder Score** out of 1000.
 
@@ -22,7 +22,7 @@ There's also a README badge (`/api/badge/<login>`), an Open Graph card per user,
 ## Privacy
 
 - The default sign-in scope is `read:user read:project`, which gives public data only.
-- Private repos are opt-in and need GitHub's `repo` scope, which GitHub only offers as full read/write. BuilderScore only reads. Private repos are **counted but never named** in a snapshot.
+- Private repos are opt-in and need GitHub's `repo` scope, which GitHub only offers as full read/write. PORT4LEO only reads. Private repos are **counted but never named** in a snapshot.
 - GitHub and Vercel tokens are encrypted with AES-256-GCM before they are stored. The token tables have row-level security enabled and no policies, so only the server can read them.
 - You can make your portfolio private from the dashboard.
 

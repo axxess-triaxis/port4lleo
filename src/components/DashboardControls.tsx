@@ -98,7 +98,7 @@ export function DashboardControls({ login, isPublic, includePrivate, lastSyncedA
               <p className="mt-1 text-xs text-ink-2">
                 {includePrivate ? "Included (counts only, names are never shown). " : "Not included. "}
                 Including them needs GitHub&apos;s <code>repo</code> scope. GitHub only offers that scope as full
-                read/write; BuilderScore only reads.
+                read/write; PORT4LEO only reads.
               </p>
               <a href={includePrivate ? "/auth/signin" : "/auth/signin?private=1"} className="mt-2 inline-block text-xs font-medium text-accent-ink underline">
                 {includePrivate ? "Switch to public-only" : "Re-connect with private repos"}
