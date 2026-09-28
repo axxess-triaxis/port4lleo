@@ -11,6 +11,8 @@ interface Props {
   includePrivate: boolean;
   lastSyncedAt: string | null;
   overridesYaml: string;
+  /** GitHub App install page, when the App is configured. */
+  installUrl: string | null;
 }
 
 const EXAMPLE = `hackathons:
@@ -29,7 +31,7 @@ async function send(url: string, init: RequestInit): Promise<string | null> {
   return body.error ?? `Request failed (${res.status})`;
 }
 
-export function DashboardControls({ login, isPublic, includePrivate, lastSyncedAt, overridesYaml }: Props) {
+export function DashboardControls({ login, isPublic, includePrivate, lastSyncedAt, overridesYaml, installUrl }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -61,6 +63,9 @@ export function DashboardControls({ login, isPublic, includePrivate, lastSyncedA
           </button>
           <a href={`/u/${login}`} className="text-sm font-medium text-accent-ink underline">
             View public page
+          </a>
+          <a href="/dashboard/governance" className="text-sm font-medium text-accent-ink underline">
+            Repository governance
           </a>
           <label className="flex items-center gap-2 text-sm text-ink-2">
             <input
@@ -97,12 +102,14 @@ export function DashboardControls({ login, isPublic, includePrivate, lastSyncedA
               <h3 className="font-medium">Private repositories</h3>
               <p className="mt-1 text-xs text-ink-2">
                 {includePrivate ? "Included (counts only, names are never shown). " : "Not included. "}
-                Including them needs GitHub&apos;s <code>repo</code> scope. GitHub only offers that scope as full
-                read/write; PORT4LEO only reads.
+                Install PORT4LEO on your own account and pick which repositories it may read. Access is read-only and
+                you can change the selection on GitHub at any time.
               </p>
-              <a href={includePrivate ? "/auth/signin" : "/auth/signin?private=1"} className="mt-2 inline-block text-xs font-medium text-accent-ink underline">
-                {includePrivate ? "Switch to public-only" : "Re-connect with private repos"}
-              </a>
+              {installUrl && (
+                <a href={installUrl} className="mt-2 inline-block text-xs font-medium text-accent-ink underline">
+                  {includePrivate ? "Change repository access" : "Install on your account"}
+                </a>
+              )}
             </div>
             <div className="card p-4">
               <h3 className="font-medium">Vercel token (optional)</h3>

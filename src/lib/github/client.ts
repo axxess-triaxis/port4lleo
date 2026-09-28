@@ -11,9 +11,17 @@ export class GitHubError extends Error {
 export interface GitHubClient {
   graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T>;
   rest<T>(path: string): Promise<T>;
+  /** Follows `Link: rel="next"` and concatenates array pages, up to `limit` items. */
+  restAll<T>(path: string, limit?: number): Promise<T[]>;
 }
 
 const API = "https://api.github.com";
+
+function nextLink(header: string | null): string | null {
+  if (!header) return null;
+  const m = /<([^>]+)>;\s*rel="next"/.exec(header);
+  return m ? m[1] : null;
+}
 
 export function createGitHubClient(token: string, fetchImpl: typeof fetch = fetch): GitHubClient {
   const headers = {
@@ -22,6 +30,18 @@ export function createGitHubClient(token: string, fetchImpl: typeof fetch = fetc
     "X-GitHub-Api-Version": "2022-11-28",
     "User-Agent": "port4leo",
   };
+
+  async function get(url: string): Promise<Response> {
+    const res = await fetchImpl(url, { headers });
+    if (!res.ok) {
+      // GitHub's own message distinguishes cases callers care about
+      // (e.g. "Dependabot alerts are disabled for this repository" vs a plain 403).
+      const body = (await res.json().catch(() => null)) as { message?: string } | null;
+      const path = url.startsWith(API) ? url.slice(API.length) : url;
+      throw new GitHubError(`GET ${path} -> ${res.status}${body?.message ? `: ${body.message}` : ""}`, res.status);
+    }
+    return res;
+  }
 
   return {
     async graphql<T>(query: string, variables: Record<string, unknown> = {}) {
@@ -40,9 +60,19 @@ export function createGitHubClient(token: string, fetchImpl: typeof fetch = fetc
     },
 
     async rest<T>(path: string) {
-      const res = await fetchImpl(`${API}${path}`, { headers });
-      if (!res.ok) throw new GitHubError(`GET ${path} -> ${res.status}`, res.status);
-      return (await res.json()) as T;
+      return (await (await get(`${API}${path}`)).json()) as T;
+    },
+
+    async restAll<T>(path: string, limit = 1000) {
+      const out: T[] = [];
+      let url: string | null = `${API}${path}`;
+      while (url && out.length < limit) {
+        const res = await get(url);
+        const page = (await res.json()) as T[];
+        out.push(...page);
+        url = nextLink(res.headers.get("link"));
+      }
+      return out.slice(0, limit);
     },
   };
 }

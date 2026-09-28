@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { stringify } from "yaml";
 import { DashboardControls } from "@/components/DashboardControls";
 import { PortfolioView } from "@/components/PortfolioView";
+import { installUrl } from "@/lib/github/app";
 import { getPortfolioByUserId } from "@/lib/portfolio";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
@@ -41,6 +42,7 @@ export default async function DashboardPage() {
         includePrivate={profile.include_private}
         lastSyncedAt={profile.last_synced_at}
         overridesYaml={hasOverrides ? stringify(portfolio.overrides) : ""}
+        installUrl={installUrl()}
       />
       {portfolio ? (
         <PortfolioView p={portfolio} />

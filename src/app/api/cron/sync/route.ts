@@ -1,6 +1,6 @@
-import { timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
+import { isCronAuthorized } from "@/lib/cron";
 import { createAdminClient } from "@/lib/supabase/server";
 import { syncUser } from "@/lib/sync";
 
@@ -9,18 +9,9 @@ export const maxDuration = 300;
 const BATCH = 10;
 const STALE_AFTER_MS = 20 * 60 * 60 * 1000;
 
-function authorized(request: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  const header = request.headers.get("authorization") ?? "";
-  if (!secret) return false;
-  const expected = Buffer.from(`Bearer ${secret}`);
-  const got = Buffer.from(header);
-  return got.length === expected.length && timingSafeEqual(got, expected);
-}
-
 /** GET /api/cron/sync -- Vercel Cron: re-sync the stalest profiles, a batch at a time. */
 export async function GET(request: NextRequest) {
-  if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isCronAuthorized(request.headers.get("authorization"))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
   const cutoff = new Date(Date.now() - STALE_AFTER_MS).toISOString();
