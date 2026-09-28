@@ -37,7 +37,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </header>
         <main className="flex-1">{children}</main>
         <footer className="border-t border-line py-6 text-center text-xs text-ink-3">
-          Open source (MIT). Metrics come from the GitHub API; anything inferred is labelled as such.
+          <p>Open source (MIT). Metrics come from the GitHub API; anything inferred is labelled as such.</p>
+          <p className="mt-2 space-x-4">
+            <Link href="/privacy" className="hover:text-ink">Privacy</Link>
+            <Link href="/terms" className="hover:text-ink">Terms</Link>
+            <Link href="/support" className="hover:text-ink">Support</Link>
+            <a href="https://github.com/axxess-triaxis/port4leo" className="hover:text-ink">Source</a>
+          </p>
         </footer>
       </body>
     </html>

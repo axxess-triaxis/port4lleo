@@ -35,15 +35,15 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         </Link>
       </div>
       <p className="mt-3 text-xs text-ink-3">
-        Read-only public access by default. You can opt in to private repos from the dashboard. Private repos are counted,
-        never named.
+        A read-only GitHub App. It reads public data by default, and private repos only where you install it. Private
+        repos are counted, never named.
       </p>
 
       <section className="mt-16 grid gap-4 sm:grid-cols-3">
         {[
           ["Evidence, not vibes", "Every number links back to a GitHub API source. Heuristic counts are labelled “inferred”."],
           ["Transparent score", "Twelve weighted, log-scaled metrics with recency decay. The weights are public and forkable."],
-          ["Yours to correct", "Add hackathons or prototypes GitHub can't see with a portfolio.yml. Self-declared items count at half weight."],
+          ["Governance built in", "Install on an org to audit Dependabot alerts, untested deploys, stale PRs, exposed PII and repo sprawl. Findings are only visible to people with repo access."],
         ].map(([t, d]) => (
           <div key={t} className="card p-5">
             <h2 className="font-semibold">{t}</h2>

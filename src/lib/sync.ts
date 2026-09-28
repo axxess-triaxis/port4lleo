@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { decrypt } from "@/lib/crypto";
 import { createGitHubClient, GitHubError, type GitHubClient } from "@/lib/github/client";
 import { collectBuilderMetrics } from "@/lib/github/collect";
+import { getUserAccessToken } from "@/lib/github/userToken";
 import { applyOverrides, EMPTY_OVERRIDES, overridesSchema, parseOverridesYaml } from "@/lib/overrides/overrides";
 import { computeScore } from "@/lib/scoring/score";
 
@@ -40,9 +41,20 @@ export async function syncUser(admin: SupabaseClient, userId: string): Promise<S
     .single();
   if (pErr || !profile) throw new Error("Profile not found");
 
-  const { data: tokenRow } = await admin.from("github_tokens").select("ciphertext").eq("user_id", userId).single();
-  if (!tokenRow) throw new Error("No GitHub token on file -- sign in again");
-  const gh = createGitHubClient(decrypt(tokenRow.ciphertext));
+  const gh = createGitHubClient(await getUserAccessToken(admin, userId));
+
+  // With a GitHub App, private repos are readable only where the user installed the app
+  // on their own account -- that installation *is* the opt-in.
+  const { data: ownInstall } = await admin
+    .from("installations")
+    .select("id")
+    .ilike("account_login", profile.login.replace(/[%_\\]/g, "\\$&"))
+    .is("suspended_at", null)
+    .maybeSingle();
+  const includePrivate = !!ownInstall;
+  if (includePrivate !== profile.include_private) {
+    await admin.from("profiles").update({ include_private: includePrivate }).eq("id", userId);
+  }
 
   const { data: vercelRow } = await admin.from("vercel_tokens").select("ciphertext").eq("user_id", userId).maybeSingle();
   const vercelToken = vercelRow ? decrypt(vercelRow.ciphertext) : null;
@@ -50,7 +62,7 @@ export async function syncUser(admin: SupabaseClient, userId: string): Promise<S
   const warnings: string[] = [];
   const raw = await collectBuilderMetrics(gh, {
     login: profile.login,
-    includePrivate: profile.include_private,
+    includePrivate,
     vercelToken,
   });
 
@@ -69,6 +81,14 @@ export async function syncUser(admin: SupabaseClient, userId: string): Promise<S
 
   const { error: sErr } = await admin.from("snapshots").insert({ user_id: userId, metrics, score: result.score });
   if (sErr) throw new Error(`Saving snapshot failed: ${sErr.message}`);
+  // Retention (stated in /privacy): keep the 30 most recent snapshots.
+  const { data: old } = await admin
+    .from("snapshots")
+    .select("id")
+    .eq("user_id", userId)
+    .order("computed_at", { ascending: false })
+    .range(30, 1000);
+  if (old?.length) await admin.from("snapshots").delete().in("id", old.map((r) => r.id));
   await admin
     .from("profiles")
     .update({

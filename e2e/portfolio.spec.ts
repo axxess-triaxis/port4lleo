@@ -74,3 +74,34 @@ test("scoring page lists every weight", async ({ page }) => {
     await expect(page.getByRole("cell", { name: label, exact: true }).first()).toBeVisible();
   }
 });
+
+test("governance dashboard redirects when signed out / unconfigured", async ({ page }) => {
+  await page.goto("/dashboard/governance");
+  await expect(page).toHaveURL(/\/(\?error=not-configured)?$/);
+});
+
+test("marketplace-required pages render and are linked from the footer", async ({ page }) => {
+  for (const [path, heading] of [
+    ["/privacy", "Privacy policy"],
+    ["/terms", "Terms of service"],
+    ["/support", "Support"],
+  ] as const) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(heading);
+    await expect(page.locator("footer").getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
+  }
+  await page.goto("/privacy");
+  await expect(page.locator("article")).toContainText("masked excerpt");
+});
+
+test("webhook and audit endpoints reject unauthenticated callers", async ({ request }) => {
+  const body = JSON.stringify({ action: "created" });
+  const bad = await request.post("/api/github/webhooks", {
+    data: body,
+    headers: { "x-github-event": "installation", "x-hub-signature-256": "sha256=deadbeef", "content-type": "application/json" },
+  });
+  expect(bad.status()).toBe(401);
+  expect((await request.post("/api/github/webhooks", { data: body })).status()).toBe(401);
+  expect((await request.get("/api/cron/audit")).status()).toBe(401);
+  expect((await request.post("/api/governance/audit", { data: { installationId: 1 } })).status()).toBeGreaterThanOrEqual(401);
+});
