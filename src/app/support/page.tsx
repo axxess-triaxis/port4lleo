@@ -19,7 +19,7 @@ export default function SupportPage() {
             <code>portfolio.yml</code> or from the dashboard.
           </li>
           <li>
-            <strong className="text-ink">Private repos are missing.</strong> Install PORT4LEO on your own account and select
+            <strong className="text-ink">Private repos are missing.</strong> Install PORT4LLEO on your own account and select
             those repositories.
           </li>
           <li>
@@ -27,7 +27,7 @@ export default function SupportPage() {
             data, for example because Dependabot alerts are disabled. Unavailable is never reported as clean.
           </li>
           <li>
-            <strong className="text-ink">Remove PORT4LEO.</strong> Uninstall it from your GitHub settings under
+            <strong className="text-ink">Remove PORT4LLEO.</strong> Uninstall it from your GitHub settings under
             Applications. Its audits are deleted immediately.
           </li>
         </ul>

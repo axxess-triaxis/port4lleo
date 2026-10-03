@@ -1,4 +1,11 @@
-# PORT4LEO
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/brand/port4lleo-wordmark-dark.png">
+    <img alt="PORT4LLEO" src="public/brand/port4lleo-wordmark-light.png" width="520">
+  </picture>
+</p>
+
+# PORT4LLEO
 
 An open-source GitHub App with two jobs:
 
@@ -43,7 +50,7 @@ Audits run when the app is installed, daily, and on demand (at most once an hour
 
 ## Privacy
 
-- PORT4LEO is a GitHub App with **read-only** permissions. It has no OAuth scopes and cannot write to anything.
+- PORT4LLEO is a GitHub App with **read-only** permissions. It has no OAuth scopes and cannot write to anything.
 - Without an install, it reads only public data. Private repos are included only where you install the app and select them. Private repos are **counted but never named** in a portfolio.
 - GitHub and Vercel tokens are encrypted with AES-256-GCM before they are stored. The token tables have row-level security enabled and no policies, so only the server can read them.
 - You can make your portfolio private from the dashboard. Uninstalling the app deletes its audits. Full policy: `/privacy`.

@@ -38,7 +38,7 @@ export async function installationToken(installationId: number, fetchImpl: typeo
       Authorization: `Bearer ${appJwt(appId, key)}`,
       Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",
-      "User-Agent": "port4leo",
+      "User-Agent": "port4lleo",
     },
   });
   if (!res.ok) throw new GitHubError(`Installation token for ${installationId} -> ${res.status}`, res.status);

@@ -28,7 +28,7 @@ export function createGitHubClient(token: string, fetchImpl: typeof fetch = fetc
     Authorization: `Bearer ${token}`,
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
-    "User-Agent": "port4leo",
+    "User-Agent": "port4lleo",
   };
 
   async function get(url: string): Promise<Response> {
