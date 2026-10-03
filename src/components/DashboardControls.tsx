@@ -102,7 +102,7 @@ export function DashboardControls({ login, isPublic, includePrivate, lastSyncedA
               <h3 className="font-medium">Private repositories</h3>
               <p className="mt-1 text-xs text-ink-2">
                 {includePrivate ? "Included (counts only, names are never shown). " : "Not included. "}
-                Install PORT4LEO on your own account and pick which repositories it may read. Access is read-only and
+                Install PORT4LLEO on your own account and pick which repositories it may read. Access is read-only and
                 you can change the selection on GitHub at any time.
               </p>
               {installUrl && (

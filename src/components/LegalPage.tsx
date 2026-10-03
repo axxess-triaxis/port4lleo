@@ -1,5 +1,5 @@
 export const PUBLISHER = "Triaxis Ventures Private Limited";
-export const SUPPORT_URL = "https://github.com/axxess-triaxis/port4leo/issues";
+export const SUPPORT_URL = "https://github.com/axxess-triaxis/port4lleo/issues";
 export const LAST_UPDATED = "September 28, 2026";
 
 export function LegalPage({ title, children }: { title: string; children: React.ReactNode }) {

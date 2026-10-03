@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 /**
- * GET /auth/signin -- sign in with the PORT4LEO GitHub App (Supabase's GitHub provider
+ * GET /auth/signin -- sign in with the PORT4LLEO GitHub App (Supabase's GitHub provider
  * configured with the App's client id/secret). GitHub Apps have no OAuth scopes: what
  * the token can read is the App's read-only permissions, limited to public data plus
  * any repos the user installed the App on.

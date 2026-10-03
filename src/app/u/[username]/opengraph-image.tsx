@@ -24,7 +24,7 @@ export default async function Image({ params }: { params: Promise<{ username: st
           fontFamily: "sans-serif",
         }}
       >
-        <div style={{ display: "flex", fontSize: 32, color: "#52514e" }}>PORT4LEO</div>
+        <div style={{ display: "flex", fontSize: 32, color: "#52514e" }}>PORT4LLEO</div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 64, fontWeight: 700 }}>{name}</div>
           <div style={{ fontSize: 32, color: "#52514e" }}>@{p?.metrics.profile.login ?? username}</div>

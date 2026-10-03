@@ -37,9 +37,9 @@ export default async function GovernancePage({ searchParams }: PageProps<"/dashb
   if (!selected) {
     body = (
       <div className="card p-8 text-center">
-        <h2 className="text-lg font-semibold">Install PORT4LEO to audit your repositories</h2>
+        <h2 className="text-lg font-semibold">Install PORT4LLEO to audit your repositories</h2>
         <p className="mx-auto mt-2 max-w-xl text-sm text-ink-2">
-          Install the app on your account or an organization, choose the repositories, and PORT4LEO audits them for open
+          Install the app on your account or an organization, choose the repositories, and PORT4LLEO audits them for open
           Dependabot alerts, commits shipped without a passing test run, stale PRs, conflict-resolution merges, possible
           unmasked PII and repository sprawl. It has read-only access.
         </p>
