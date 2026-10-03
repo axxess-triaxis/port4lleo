@@ -29,9 +29,19 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: inst } = await admin.from("installations").select("last_audit_at").eq("id", installationId).maybeSingle();
+  const { data: prev } = await admin
+    .from("audits")
+    .select("summary")
+    .eq("installation_id", installationId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  // An audit that could see no repositories scanned nothing; it shouldn't block a re-run
+  // once the user has fixed the installation's repository access.
+  const prevScannedSomething = ((prev?.summary as { reposAudited?: number } | null)?.reposAudited ?? 0) > 0;
   const last = inst?.last_audit_at ? new Date(inst.last_audit_at).getTime() : 0;
   const wait = last + AUDIT_COOLDOWN_MS - Date.now();
-  if (wait > 0) {
+  if (prevScannedSomething && wait > 0) {
     return NextResponse.json({ error: `Audited recently. Try again in ${Math.ceil(wait / 60000)} min.` }, { status: 429 });
   }
 

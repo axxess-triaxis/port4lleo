@@ -98,8 +98,42 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function AuditView({ report, summary, at }: { report: AuditReport; summary: AuditSummary; at: string }) {
+export function AuditView({
+  report,
+  summary,
+  at,
+  manageUrl,
+}: {
+  report: AuditReport;
+  summary: AuditSummary;
+  at: string;
+  /** GitHub page where this installation's repository access is configured. */
+  manageUrl: string;
+}) {
   const s = summary;
+  // Zeros from an audit that scanned nothing must never read as a clean bill of health.
+  if (report.repos.length === 0) {
+    const noAccess = report.reposInInstallation === 0;
+    return (
+      <div className="card border-[var(--warn-ink)] p-6" data-testid="gov-nothing-scanned">
+        <h2 className="font-semibold text-[var(--warn-ink)]">Nothing was scanned</h2>
+        <p className="mt-2 text-sm text-ink-2">
+          {noAccess
+            ? `PORT4LLEO can't see any repositories in ${report.account}. The installation has no repository access, so this audit checked nothing.`
+            : `None of the ${report.reposInInstallation} repositories in this installation are ones you can access on GitHub, so there is nothing to show you.`}
+        </p>
+        {noAccess && (
+          <a href={manageUrl} className="mt-3 inline-block text-sm font-medium text-accent-ink underline" target="_blank" rel="noreferrer">
+            Choose repositories on GitHub
+          </a>
+        )}
+        <p className="mt-3 text-xs text-ink-3">
+          Last attempt {new Date(at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}. Adding repositories
+          starts a new audit automatically, or use &ldquo;Run audit now&rdquo;.
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

@@ -61,11 +61,15 @@ export default async function GovernancePage({ searchParams }: PageProps<"/dashb
       );
     } else {
       const visible = filterReportForViewer(audit.report, await viewerRepos(token, selected.id));
+      const manageUrl =
+        selected.account.type === "Organization"
+          ? `https://github.com/organizations/${selected.account.login}/settings/installations/${selected.id}`
+          : `https://github.com/settings/installations/${selected.id}`;
       body = (
         <div className="space-y-4">
           <AuditButton installationId={selected.id} />
           {/* Summary is recomputed from the filtered report so counts never include hidden repos. */}
-          <AuditView report={visible} summary={summarize(visible)} at={audit.created_at} />
+          <AuditView report={visible} summary={summarize(visible)} at={audit.created_at} manageUrl={manageUrl} />
         </div>
       );
     }
