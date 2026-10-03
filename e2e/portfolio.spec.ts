@@ -75,6 +75,23 @@ test("scoring page lists every weight", async ({ page }) => {
   }
 });
 
+test("sign-in failures show the provider's real reason, not a generic message", async ({ page }) => {
+  await page.goto(
+    "/?error=missing-code#error=server_error&error_description=Error+getting+user+profile+from+external+provider",
+  );
+  await expect(page.getByTestId("auth-error")).toHaveText(
+    "Sign-in failed: Error getting user profile from external provider",
+  );
+  await page.goto("/?error=missing-code");
+  await expect(page.getByTestId("auth-error")).toHaveText("Sign-in link was incomplete. Try again.");
+});
+
+test("favicon.ico serves the app icon", async ({ request }) => {
+  const res = await request.get("/favicon.ico");
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toContain("image/png");
+});
+
 test("governance dashboard redirects when signed out / unconfigured", async ({ page }) => {
   await page.goto("/dashboard/governance");
   await expect(page).toHaveURL(/\/(\?error=not-configured)?$/);

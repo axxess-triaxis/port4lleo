@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthErrorNotice } from "@/components/AuthErrorNotice";
 import { WEIGHTS } from "@/lib/scoring/weights";
 
 const ERRORS: Record<string, string> = {
@@ -16,11 +17,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-16">
-      {message && (
-        <p role="alert" className="mb-8 rounded-lg border border-line bg-surface px-4 py-3 text-sm">
-          {message}
-        </p>
-      )}
+      <AuthErrorNotice fallback={message} />
       <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Your GitHub, as a builder portfolio.</h1>
       <p className="mt-4 max-w-2xl text-lg text-ink-2">
         Connect GitHub and get a shareable page of what you have shipped: apps built and deployed, merged PRs, test runs,

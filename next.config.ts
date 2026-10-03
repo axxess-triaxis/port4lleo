@@ -7,6 +7,11 @@ if (leaks.length > 0) {
   throw new Error(`Refusing to build: public env vars contain secrets:\n- ${leaks.join("\n- ")}`);
 }
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  // Some clients request /favicon.ico directly; serve the app icon there.
+  async rewrites() {
+    return [{ source: "/favicon.ico", destination: "/icon.png" }];
+  },
+};
 
 export default nextConfig;
