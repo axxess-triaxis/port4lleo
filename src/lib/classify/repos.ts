@@ -46,7 +46,10 @@ const APP_FRAMEWORKS: Record<string, string> = {
 };
 
 const HACKATHON_TOPICS = new Set(["hackathon", "devpost", "ethglobal", "mlh", "hacktoberfest-hackathon", "hackathon-project"]);
-const HACKATHON_TEXT = /hack-?a-?thon|devpost|ethglobal|\bmlh\b/i;
+const HACKATHON_NAME = /hack-?a-?thon|devpost|ethglobal|\bmlh\b/i;
+// In descriptions only the singular counts: "a hackathon entry" names an event, while
+// "tracks hackathons, prototypes..." merely lists a feature.
+const HACKATHON_DESCRIPTION = /hack-?a-?thon(?!s)|devpost|ethglobal|\bmlh\b/i;
 
 const PROTOTYPE_TOPICS = new Set(["prototype", "poc", "proof-of-concept", "mvp", "experiment", "experimental"]);
 const PROTOTYPE_TEXT = /\b(prototype|proof[- ]of[- ]concept|poc|mvp)\b/i;
@@ -85,7 +88,7 @@ export function classifyVercel(r: RepoFacts): string | null {
 export function classifyHackathon(r: RepoFacts): string | null {
   const topic = r.topics.find((t) => HACKATHON_TOPICS.has(t));
   if (topic) return `topic:${topic}`;
-  if (HACKATHON_TEXT.test(r.name) || HACKATHON_TEXT.test(r.description ?? "")) return "name/description";
+  if (HACKATHON_NAME.test(r.name) || HACKATHON_DESCRIPTION.test(r.description ?? "")) return "name/description";
   return null;
 }
 

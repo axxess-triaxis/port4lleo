@@ -26,6 +26,10 @@ export default function PrivacyPage() {
         <h2>What PORT4LLEO stores</h2>
         <ul>
           <li>Your GitHub login, name and avatar URL.</li>
+          <li>
+            Your email address, read from GitHub at sign-in and stored by our sign-in provider (Supabase Auth) with your
+            account. PORT4LLEO does not display it, share it or send you email.
+          </li>
           <li>Portfolio snapshots: counts and repository names. Private repositories are counted but never named.</li>
           <li>
             Governance audits: findings per repository. Possible personal data found in files is stored only as a masked

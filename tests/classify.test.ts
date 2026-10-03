@@ -76,6 +76,11 @@ describe("classifiers", () => {
   it("hackathon: topic or name/description", () => {
     expect(classifyHackathon(facts({ topics: ["ethglobal"] }))).toBe("topic:ethglobal");
     expect(classifyHackathon(facts({ description: "Built at a 24h hackathon" }))).toBe("name/description");
+    expect(classifyHackathon(facts({ description: "IBM Bob 2.0 Hackathon entry" }))).toBe("name/description");
+    // A product that *tracks* hackathons is not a hackathon entry (live false positive, 2026-10-03).
+    expect(
+      classifyHackathon(facts({ description: "Builder portfolio: apps shipped, PRs, tests, hackathons, prototypes" })),
+    ).toBeNull();
     expect(classifyHackathon(facts({ name: "hackernews-clone" }))).toBeNull();
   });
   it("prototype: topic or name/description", () => {
