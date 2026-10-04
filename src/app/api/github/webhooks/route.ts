@@ -1,5 +1,5 @@
 import { after, NextResponse, type NextRequest } from "next/server";
-import { verifySignature } from "@/lib/github/webhook";
+import { diagnoseSignature, verifySignature } from "@/lib/github/webhook";
 import { auditInstallation } from "@/lib/governance/service";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -18,7 +18,18 @@ interface MarketplacePayload {
 /** POST /api/github/webhooks -- GitHub App + Marketplace events. Signature-verified. */
 export async function POST(request: NextRequest) {
   const raw = await request.text();
-  if (!verifySignature(raw, request.headers.get("x-hub-signature-256"), process.env.GITHUB_WEBHOOK_SECRET)) {
+  const signature = request.headers.get("x-hub-signature-256");
+  if (!verifySignature(raw, signature, process.env.GITHUB_WEBHOOK_SECRET)) {
+    console.warn(
+      "webhook rejected",
+      JSON.stringify({
+        event: request.headers.get("x-github-event"),
+        delivery: request.headers.get("x-github-delivery"),
+        hookId: request.headers.get("x-github-hook-id"),
+        target: request.headers.get("x-github-hook-installation-target-type"),
+        ...diagnoseSignature(raw, signature, process.env.GITHUB_WEBHOOK_SECRET),
+      }),
+    );
     return NextResponse.json({ error: "Bad signature" }, { status: 401 });
   }
   const event = request.headers.get("x-github-event");
