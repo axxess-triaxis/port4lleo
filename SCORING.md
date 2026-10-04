@@ -13,6 +13,7 @@ score         = round( Σ normalized(m) × weight_m × 10 )
 - **Caps** stop farming. Past a metric's cap, more of it adds nothing.
 - **Recency.** Merged PRs and contributions are bucketed by calendar year and weighted by `0.5 ^ (currentYear − year)`, a 1-year half-life. Everything else is all-time.
 - **Self-declared** entries from `portfolio.yml` or the dashboard count as 0.5 each.
+- **Prototypes include every hackathon entry** (weekend builds are prototypes by nature). A repo that is both counts once in Prototypes, but also counts in Hackathons.
 - Unavailable metrics, for example when Actions is disabled, count as 0 and are flagged in the UI.
 
 ## Weights
