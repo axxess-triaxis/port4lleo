@@ -9,7 +9,7 @@ import { createGitHubClient } from "@/lib/github/client";
 import { appJwt } from "@/lib/github/app";
 import { verifySignature } from "@/lib/github/webhook";
 import { filterReportForViewer, runAudit, summarize } from "@/lib/governance/audit";
-import { checkDependabot, checkStalePrs, checkUntestedDeploys, findConflictMerges } from "@/lib/governance/checks";
+import { checkDependabot, checkStalePrs, checkUntestedDeploys, findConflictMerges, skipReason } from "@/lib/governance/checks";
 import { checkPii, isScannablePath, mask, scanContent } from "@/lib/governance/pii";
 import { checkSprawl, normalizedLevenshtein } from "@/lib/governance/sprawl";
 
@@ -102,6 +102,42 @@ describe("untested deploys", () => {
     const reasons = Object.fromEntries(r.findings.map((f) => [f.sha, f.reason]));
     expect(reasons).toEqual({ "11111111": "no_test_run", "22222222": "test_run_failed" });
     expect(r.commitsChecked).toBe(3);
+  });
+});
+
+describe("untested deploys ignore bot and skip-ci commits", () => {
+  const c = (message: string, extra: Partial<Parameters<typeof skipReason>[0]> = {}) => ({ sha: "a".repeat(40), commit: { message }, ...extra });
+
+  it("recognises skip keywords, the skip-checks trailer and the [skip github action] variant", () => {
+    expect(skipReason(c("Update metrics.svg - [Skip GitHub Action]"))).toBe("skip-ci"); // seen in the live audit
+    expect(skipReason(c("docs: typo [skip ci]"))).toBe("skip-ci");
+    expect(skipReason(c("chore [ci skip]"))).toBe("skip-ci");
+    expect(skipReason(c("bump\n\nskip-checks: true"))).toBe("skip-ci");
+    expect(skipReason(c("Fix the skip ci parser"))).toBeNull(); // the words alone don't count
+  });
+
+  it("recognises bot authors by account type, login or git author name", () => {
+    expect(skipReason(c("Bump x", { author: { login: "dependabot[bot]", type: "Bot" } }))).toBe("bot");
+    expect(skipReason(c("Update", { author: null, commit: { message: "Update", author: { name: "github-actions[bot]" } } }))).toBe("bot");
+    expect(skipReason(c("Real work", { author: { login: "octo", type: "User" } }))).toBeNull();
+  });
+
+  it("skips them without fetching check runs, and reports how many were skipped", async () => {
+    let calls = 0;
+    server.use(
+      http.get(`${API}/repos/o/r/commits/:sha/check-runs`, () => {
+        calls++;
+        return HttpResponse.json({ check_runs: [] });
+      }),
+    );
+    const r = await checkUntestedDeploys(gh(), "o/r", [
+      { sha: "1".repeat(40), commit: { message: "Update metrics.svg - [Skip GitHub Action]" } },
+      { sha: "2".repeat(40), author: { login: "dependabot[bot]", type: "Bot" }, commit: { message: "Bump lodash" } },
+      { sha: "3".repeat(40), commit: { message: "Ship feature" } },
+    ]);
+    expect(calls).toBe(1);
+    expect(r).toMatchObject({ commitsChecked: 1, commitsSkipped: 2 });
+    expect(r.findings.map((f) => f.sha)).toEqual(["33333333"]);
   });
 });
 
