@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 function matches(rawBody: string, header: string, secret: string): boolean {
   const expected = Buffer.from(`sha256=${createHmac("sha256", secret).update(rawBody, "utf8").digest("hex")}`);
@@ -49,11 +49,22 @@ export function matchWebhookSource(
  * Non-secret facts about a rejected delivery, for logs. Never includes the secret or
  * the signature itself -- only shapes, lengths and which check failed.
  */
+/**
+ * First 8 hex chars of SHA-256(secret). Lets an operator confirm the deployed secret is the
+ * one they hold (compute the same locally) without the value ever being logged. For a
+ * 64-hex random secret this reveals nothing usable.
+ */
+export function secretFingerprint(secret: string | undefined): string | null {
+  const s = secret?.trim();
+  return s ? createHash("sha256").update(s, "utf8").digest("hex").slice(0, 8) : null;
+}
+
 export function diagnoseSignature(rawBody: string, header: string | null, secret: string | undefined) {
   const raw = secret ?? "";
   return {
     secretConfigured: raw.length > 0,
     secretLength: raw.trim().length,
+    secretFingerprint: secretFingerprint(secret),
     secretHadSurroundingWhitespace: raw !== raw.trim(),
     headerPresent: header !== null,
     headerFormatOk: !!header && /^sha256=[0-9a-f]{64}$/.test(header),
