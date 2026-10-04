@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { demoMetrics } from "@/lib/demo";
-import { applyOverrides, EMPTY_OVERRIDES, mergeOverrides, parseOverridesYaml } from "@/lib/overrides/overrides";
+import { applyOverrides, EMPTY_OVERRIDES, mergeOverrides, parseOverridesYaml, withHackathonEntries } from "@/lib/overrides/overrides";
 
 describe("parseOverridesYaml", () => {
   it("parses a valid file and fills defaults", () => {
@@ -27,8 +27,7 @@ describe("applyOverrides", () => {
 
   it("adds self-declared entries with provenance", () => {
     const out = applyOverrides(m, { ...EMPTY_OVERRIDES, prototypes: [{ name: "Paper prototype" }] });
-    expect(out.prototypes).toHaveLength(m.prototypes.length + 1);
-    expect(out.prototypes.at(-1)?.provenance).toBe("self-declared");
+    expect(out.prototypes.find((p) => p.nameWithOwner === "Paper prototype")?.provenance).toBe("self-declared");
   });
 
   it("excludes repos from every inferred list, case-insensitively", () => {
@@ -51,5 +50,39 @@ describe("applyOverrides", () => {
   it("mergeOverrides concatenates sources and skips nulls", () => {
     const merged = mergeOverrides({ ...EMPTY_OVERRIDES, exclude: ["a/b"] }, null, { ...EMPTY_OVERRIDES, exclude: ["c/d"] });
     expect(merged.exclude).toEqual(["a/b", "c/d"]);
+  });
+});
+
+describe("hackathon entries count as prototypes", () => {
+  const ref = (name: string, provenance: "inferred" | "self-declared" = "inferred") => ({
+    nameWithOwner: name,
+    url: name.includes("/") ? `https://github.com/${name}` : "",
+    reason: "topic:x",
+    provenance,
+  });
+
+  it("adds every hackathon entry, labelled, without double counting existing prototypes", () => {
+    const out = withHackathonEntries([ref("me/rag-mvp"), ref("me/zk-hack")], [ref("me/zk-hack"), ref("me/climate-hack")]);
+    expect(out.map((p) => p.nameWithOwner)).toEqual(["me/rag-mvp", "me/zk-hack", "me/climate-hack"]);
+    expect(out[2].reason).toBe("hackathon entry");
+  });
+
+  it("keeps self-declared provenance (half weight) and counts each redacted private entry", () => {
+    const out = withHackathonEntries(
+      [ref("Private repository")],
+      [ref("SIH 2025", "self-declared"), ref("Private repository"), ref("Private repository")],
+    );
+    expect(out).toHaveLength(4);
+    expect(out[1].provenance).toBe("self-declared");
+  });
+
+  it("is applied by applyOverrides, after exclusions", () => {
+    const m = demoMetrics();
+    const out = applyOverrides(m, { ...EMPTY_OVERRIDES, exclude: ["demo-builder/climate-hack"] });
+    const names = out.prototypes.map((p) => p.nameWithOwner);
+    expect(names).toContain("demo-builder/ethglobal-zk-vote");
+    expect(names).toContain("Smart India Hackathon 2025");
+    expect(names).not.toContain("demo-builder/climate-hack");
+    expect(out.prototypes.length).toBe(m.prototypes.length + out.hackathons.length);
   });
 });

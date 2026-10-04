@@ -74,7 +74,7 @@ export default function ScoringPage() {
           <li><strong className="text-ink">Apps built</strong> needs an app topic, or an app framework (Next.js, Expo, FastAPI…) in a root manifest plus a homepage or deployment.</li>
           <li><strong className="text-ink">Apps deployed</strong> needs a successful GitHub Deployment or an external homepage URL. Homepage reachability is not checked.</li>
           <li><strong className="text-ink">Vercel projects</strong> are repos with deployments created by the Vercel GitHub app, or come from the Vercel API when you add a token.</li>
-          <li><strong className="text-ink">Hackathons and prototypes</strong> come from repo topics, names and descriptions, plus anything you declare.</li>
+          <li><strong className="text-ink">Hackathons and prototypes</strong> come from repo topics, names and descriptions, plus anything you declare. Every hackathon entry also counts as a prototype, because weekend builds are prototypes by nature.</li>
           <li><strong className="text-ink">Integrations</strong> are read from root package.json, requirements.txt and pyproject.toml only, so packages nested inside a monorepo are missed.</li>
           <li><strong className="text-ink">Actions runs</strong> cover your 100 most recently pushed repos.</li>
         </ul>
