@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
         ...app,
         marketplaceSecretConfigured: marketplace.secretConfigured,
         marketplaceSecretLength: marketplace.secretLength,
+        marketplaceSecretFingerprint: marketplace.secretFingerprint,
         // True when the Marketplace secret did sign it but the event isn't a Marketplace event.
         marketplaceSignedWrongEvent: verifySignature(raw, signature, secrets.marketplace),
       }),

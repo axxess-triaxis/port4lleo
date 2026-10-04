@@ -7,7 +7,7 @@ vi.mock("server-only", () => ({}));
 
 import { createGitHubClient } from "@/lib/github/client";
 import { appJwt } from "@/lib/github/app";
-import { diagnoseSignature, matchWebhookSource, verifySignature } from "@/lib/github/webhook";
+import { diagnoseSignature, matchWebhookSource, secretFingerprint, verifySignature } from "@/lib/github/webhook";
 import { filterReportForViewer, runAudit, summarize } from "@/lib/governance/audit";
 import { checkDependabot, checkStalePrs, checkUntestedDeploys, findConflictMerges, skipReason } from "@/lib/governance/checks";
 import { checkPii, isScannablePath, mask, scanContent } from "@/lib/governance/pii";
@@ -269,6 +269,7 @@ describe("webhook signature", () => {
     expect(d).toEqual({
       secretConfigured: true,
       secretLength: 64,
+      secretFingerprint: secretFingerprint(secret),
       secretHadSurroundingWhitespace: true,
       headerPresent: true,
       headerFormatOk: true,
@@ -276,7 +277,15 @@ describe("webhook signature", () => {
     });
     expect(JSON.stringify(d)).not.toContain(secret);
     expect(JSON.stringify(d)).not.toContain(sign("other").slice(7));
-    expect(diagnoseSignature(body, null, undefined)).toMatchObject({ secretConfigured: false, headerPresent: false, headerFormatOk: false });
+    expect(diagnoseSignature(body, null, undefined)).toMatchObject({ secretConfigured: false, headerPresent: false, headerFormatOk: false, secretFingerprint: null });
+  });
+
+  it("fingerprints are SHA-256 prefixes of the trimmed secret (matches PowerShell's SHA256 of UTF-8 bytes)", () => {
+    // FIPS 180-2 test vector: SHA-256("abc") = ba7816bf 8f01cfea ...
+    expect(secretFingerprint("abc")).toBe("ba7816bf");
+    expect(secretFingerprint("  abc\n")).toBe("ba7816bf");
+    expect(secretFingerprint("")).toBeNull();
+    expect(secretFingerprint(undefined)).toBeNull();
   });
 });
 
