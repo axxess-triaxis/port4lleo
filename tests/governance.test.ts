@@ -7,7 +7,7 @@ vi.mock("server-only", () => ({}));
 
 import { createGitHubClient } from "@/lib/github/client";
 import { appJwt } from "@/lib/github/app";
-import { diagnoseSignature, verifySignature } from "@/lib/github/webhook";
+import { diagnoseSignature, matchWebhookSource, verifySignature } from "@/lib/github/webhook";
 import { filterReportForViewer, runAudit, summarize } from "@/lib/governance/audit";
 import { checkDependabot, checkStalePrs, checkUntestedDeploys, findConflictMerges, skipReason } from "@/lib/governance/checks";
 import { checkPii, isScannablePath, mask, scanContent } from "@/lib/governance/pii";
@@ -240,6 +240,27 @@ describe("webhook signature", () => {
     expect(verifySignature(body, sign("s3cret"), "s3cret\r\n")).toBe(true);
     expect(verifySignature(body, sign("s3cret"), "  s3cret ")).toBe(true);
     expect(verifySignature(body, sign("s3cret"), "   ")).toBe(false);
+  });
+
+  it("routes each delivery to the secret that signed it", () => {
+    const secrets = { app: "app-secret", marketplace: "mkt-secret" };
+    expect(matchWebhookSource(body, sign("app-secret"), "installation", secrets)).toBe("app");
+    expect(matchWebhookSource(body, sign("app-secret"), "marketplace_purchase", secrets)).toBe("app");
+    expect(matchWebhookSource(body, sign("mkt-secret"), "marketplace_purchase", secrets)).toBe("marketplace");
+    expect(matchWebhookSource(body, sign("mkt-secret"), "ping", secrets)).toBe("marketplace");
+    expect(matchWebhookSource(body, sign("other"), "ping", secrets)).toBeNull();
+  });
+
+  it("never lets the hand-pasted Marketplace secret authorize installation or repo events", () => {
+    const secrets = { app: "app-secret", marketplace: "mkt-secret" };
+    for (const event of ["installation", "installation_repositories", "push", null]) {
+      expect(matchWebhookSource(body, sign("mkt-secret"), event, secrets)).toBeNull();
+    }
+  });
+
+  it("works with only the App secret configured", () => {
+    expect(matchWebhookSource(body, sign("app-secret"), "installation", { app: "app-secret" })).toBe("app");
+    expect(matchWebhookSource(body, sign("x"), "marketplace_purchase", { app: "app-secret" })).toBeNull();
   });
 
   it("diagnoses a rejection without exposing the secret or the signature", () => {
