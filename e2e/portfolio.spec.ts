@@ -122,3 +122,9 @@ test("webhook and audit endpoints reject unauthenticated callers", async ({ requ
   expect((await request.get("/api/cron/audit")).status()).toBe(401);
   expect((await request.post("/api/governance/audit", { data: { installationId: 1 } })).status()).toBeGreaterThanOrEqual(401);
 });
+
+test("admin tools are hidden from anonymous visitors", async ({ page, request }) => {
+  expect((await request.post("/api/admin/webhook-secret")).status()).toBeGreaterThanOrEqual(401);
+  await page.goto("/dashboard/admin");
+  await expect(page).toHaveURL(/\/(\?error=not-configured)?$/);
+});
