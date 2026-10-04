@@ -7,7 +7,7 @@ vi.mock("server-only", () => ({}));
 
 import { createGitHubClient } from "@/lib/github/client";
 import { appJwt } from "@/lib/github/app";
-import { verifySignature } from "@/lib/github/webhook";
+import { diagnoseSignature, verifySignature } from "@/lib/github/webhook";
 import { filterReportForViewer, runAudit, summarize } from "@/lib/governance/audit";
 import { checkDependabot, checkStalePrs, checkUntestedDeploys, findConflictMerges, skipReason } from "@/lib/governance/checks";
 import { checkPii, isScannablePath, mask, scanContent } from "@/lib/governance/pii";
@@ -234,6 +234,28 @@ describe("webhook signature", () => {
     expect(verifySignature(body + " ", sign("s3cret"), "s3cret")).toBe(false);
     expect(verifySignature(body, null, "s3cret")).toBe(false);
     expect(verifySignature(body, sign("s3cret"), undefined)).toBe(false);
+  });
+
+  it("ignores whitespace around the configured secret (a pasted value can gain a newline)", () => {
+    expect(verifySignature(body, sign("s3cret"), "s3cret\r\n")).toBe(true);
+    expect(verifySignature(body, sign("s3cret"), "  s3cret ")).toBe(true);
+    expect(verifySignature(body, sign("s3cret"), "   ")).toBe(false);
+  });
+
+  it("diagnoses a rejection without exposing the secret or the signature", () => {
+    const secret = "ab".repeat(32);
+    const d = diagnoseSignature(body, sign("other"), `${secret}\n`);
+    expect(d).toEqual({
+      secretConfigured: true,
+      secretLength: 64,
+      secretHadSurroundingWhitespace: true,
+      headerPresent: true,
+      headerFormatOk: true,
+      bodyBytes: body.length,
+    });
+    expect(JSON.stringify(d)).not.toContain(secret);
+    expect(JSON.stringify(d)).not.toContain(sign("other").slice(7));
+    expect(diagnoseSignature(body, null, undefined)).toMatchObject({ secretConfigured: false, headerPresent: false, headerFormatOk: false });
   });
 });
 
