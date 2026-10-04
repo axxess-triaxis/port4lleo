@@ -48,6 +48,8 @@ export interface UntestedCommit {
 export interface UntestedDeployResult {
   findings: UntestedCommit[];
   commitsChecked: number;
+  /** Bot / [skip ci] commits left out on purpose. Absent on audits stored before 2026-10-04. */
+  commitsSkipped?: number;
   error: string | null;
 }
 
