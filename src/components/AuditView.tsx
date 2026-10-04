@@ -55,7 +55,11 @@ function RepoCard({ r }: { r: RepoAudit }) {
           </Section>
         )}
         {r.untestedDeploys.findings.length > 0 && (
-          <Section title={`Commits without a passing test run (${r.untestedDeploys.findings.length} of ${r.untestedDeploys.commitsChecked} checked)`}>
+          <Section
+            title={`Commits without a passing test run (${r.untestedDeploys.findings.length} of ${r.untestedDeploys.commitsChecked} checked${
+              r.untestedDeploys.commitsSkipped ? `; ${r.untestedDeploys.commitsSkipped} bot or [skip ci] commits ignored` : ""
+            })`}
+          >
             {r.untestedDeploys.findings.map((c) => (
               <li key={c.sha}>
                 <code className="font-mono text-xs">{c.sha}</code> {c.messageSummary}{" "}

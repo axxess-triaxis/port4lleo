@@ -72,7 +72,24 @@ export interface CommitJson {
   sha: string;
   html_url?: string;
   parents?: unknown[];
-  commit?: { message?: string };
+  /** The linked GitHub account, when GitHub can match the commit author to one. */
+  author?: { login?: string; type?: string } | null;
+  commit?: { message?: string; author?: { name?: string } };
+}
+
+/**
+ * Commits that deliberately don't run CI: GitHub's own skip keywords, the `skip-checks: true`
+ * trailer, and the common "[skip github action]" variant some workflows use.
+ */
+const SKIP_CI = /\[(skip ci|ci skip|no ci|skip actions|actions skip|skip github actions?)\]|^skip-checks:\s*true\s*$/im;
+
+/** Why a commit is excluded from the untested-deploy check, or null if it should be checked. */
+export function skipReason(c: CommitJson): "skip-ci" | "bot" | null {
+  if (SKIP_CI.test(c.commit?.message ?? "")) return "skip-ci";
+  const login = c.author?.login ?? "";
+  const name = c.commit?.author?.name ?? "";
+  if (c.author?.type === "Bot" || /\[bot\]$/i.test(login) || /\[bot\]$/i.test(name)) return "bot";
+  return null;
 }
 
 const summary = (c: CommitJson) => (c.commit?.message ?? "").split("\n")[0];
@@ -104,8 +121,13 @@ export async function checkUntestedDeploys(
   commits: CommitJson[],
   markers = DEFAULT_TEST_MARKERS,
 ): Promise<UntestedDeployResult> {
-  const result: UntestedDeployResult = { findings: [], commitsChecked: 0, error: null };
+  const result: UntestedDeployResult = { findings: [], commitsChecked: 0, commitsSkipped: 0, error: null };
   for (const c of commits) {
+    // Bot commits and [skip ci]-style commits are untested on purpose; counting them is noise.
+    if (skipReason(c)) {
+      result.commitsSkipped = (result.commitsSkipped ?? 0) + 1;
+      continue;
+    }
     let runs: { name?: string; conclusion?: string | null }[];
     try {
       runs = (await gh.rest<{ check_runs: typeof runs }>(`/repos/${repo}/commits/${c.sha}/check-runs?per_page=100`))
