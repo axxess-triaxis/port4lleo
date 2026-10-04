@@ -30,7 +30,7 @@ export function statTiles(m: BuilderMetrics): StatTile[] {
     { key: "appsDeployed", label: "Apps deployed", value: m.appsDeployed.length, provenance: "inferred", hint: "Successful deployment or live homepage", error: e.appsDeployed },
     { key: "vercelProjects", label: "Vercel projects", value: m.vercelProjects.length, provenance: m.vercelSource === "vercel-api" ? "native" : "inferred", hint: m.vercelSource === "vercel-api" ? "From the Vercel API" : "Repos deployed by Vercel", error: e.vercelProjects },
     { key: "hackathons", label: "Hackathons", value: m.hackathons.length, provenance: listProvenance(m.hackathons), hint: "Topics, names, or self-declared", error: e.hackathons },
-    { key: "prototypes", label: "Prototypes", value: m.prototypes.length, provenance: listProvenance(m.prototypes), hint: "poc / mvp / prototype repos", error: e.prototypes },
+    { key: "prototypes", label: "Prototypes", value: m.prototypes.length, provenance: listProvenance(m.prototypes), hint: "poc / mvp repos + every hackathon entry", error: e.prototypes },
     { key: "integrations", label: "Integrations", value: m.integrations.length, provenance: "inferred", hint: "Distinct services in manifests", error: e.integrations },
   ];
 }

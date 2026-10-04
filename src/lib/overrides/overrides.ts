@@ -78,13 +78,30 @@ function applyList(inferred: RepoRef[], added: OverrideEntry[], exclude: Set<str
   return [...kept, ...extra];
 }
 
+const REDACTED = "Private repository";
+
+/**
+ * Product rule (founder decision, 2026-10-04): every hackathon entry is also a prototype.
+ * A repo already counted as a prototype is not added twice. Redacted private repos can't
+ * be matched by name, so each counts once per list. Provenance carries over, so a
+ * self-declared hackathon stays a half-weight self-declared prototype.
+ */
+export function withHackathonEntries(prototypes: RepoRef[], hackathons: RepoRef[]): RepoRef[] {
+  const present = new Set(prototypes.filter((p) => p.nameWithOwner !== REDACTED).map((p) => p.nameWithOwner.toLowerCase()));
+  const extra = hackathons
+    .filter((h) => h.nameWithOwner === REDACTED || !present.has(h.nameWithOwner.toLowerCase()))
+    .map((h) => ({ ...h, reason: "hackathon entry" }));
+  return [...prototypes, ...extra];
+}
+
 /** Returns a new metrics object with overrides applied. Pure. */
 export function applyOverrides(m: BuilderMetrics, o: Overrides): BuilderMetrics {
   const exclude = new Set(o.exclude.map((x) => x.toLowerCase()));
+  const hackathons = applyList(m.hackathons, o.hackathons, exclude);
   return {
     ...m,
-    hackathons: applyList(m.hackathons, o.hackathons, exclude),
-    prototypes: applyList(m.prototypes, o.prototypes, exclude),
+    hackathons,
+    prototypes: withHackathonEntries(applyList(m.prototypes, o.prototypes, exclude), hackathons),
     appsBuilt: applyList(m.appsBuilt, o.apps, exclude),
     appsDeployed: m.appsDeployed.filter((r) => !exclude.has(r.nameWithOwner.toLowerCase())),
   };
