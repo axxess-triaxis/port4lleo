@@ -17,6 +17,34 @@ export function verifySignature(rawBody: string, header: string | null, secret: 
   return matches(rawBody, header, s);
 }
 
+/** Which webhook source signed a delivery. */
+export type WebhookSource = "app" | "marketplace";
+
+/**
+ * Events a Marketplace-listing delivery may carry. The listing's secret is pasted by hand
+ * into GitHub's listing form (there is no API for it), so it is kept separate from the
+ * API-synced App secret and must never authorize installation or repository events.
+ */
+const MARKETPLACE_EVENTS = new Set(["marketplace_purchase", "ping"]);
+
+/**
+ * Identifies which configured secret signed the delivery, or null if none did.
+ * The App secret is checked first. A Marketplace-signed delivery for any event outside
+ * MARKETPLACE_EVENTS is treated as unsigned.
+ */
+export function matchWebhookSource(
+  rawBody: string,
+  header: string | null,
+  event: string | null,
+  secrets: { app?: string; marketplace?: string },
+): WebhookSource | null {
+  if (verifySignature(rawBody, header, secrets.app)) return "app";
+  if (verifySignature(rawBody, header, secrets.marketplace) && event !== null && MARKETPLACE_EVENTS.has(event)) {
+    return "marketplace";
+  }
+  return null;
+}
+
 /**
  * Non-secret facts about a rejected delivery, for logs. Never includes the secret or
  * the signature itself -- only shapes, lengths and which check failed.

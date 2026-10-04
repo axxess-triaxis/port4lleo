@@ -1,5 +1,5 @@
 import { after, NextResponse, type NextRequest } from "next/server";
-import { diagnoseSignature, verifySignature } from "@/lib/github/webhook";
+import { diagnoseSignature, matchWebhookSource, verifySignature } from "@/lib/github/webhook";
 import { auditInstallation } from "@/lib/governance/service";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -19,20 +19,32 @@ interface MarketplacePayload {
 export async function POST(request: NextRequest) {
   const raw = await request.text();
   const signature = request.headers.get("x-hub-signature-256");
-  if (!verifySignature(raw, signature, process.env.GITHUB_WEBHOOK_SECRET)) {
+  const event = request.headers.get("x-github-event");
+  const secrets = { app: process.env.GITHUB_WEBHOOK_SECRET, marketplace: process.env.MARKETPLACE_WEBHOOK_SECRET };
+  const source = matchWebhookSource(raw, signature, event, secrets);
+  const meta = {
+    event,
+    delivery: request.headers.get("x-github-delivery"),
+    hookId: request.headers.get("x-github-hook-id"),
+    target: request.headers.get("x-github-hook-installation-target-type"),
+  };
+  if (!source) {
+    const app = diagnoseSignature(raw, signature, secrets.app);
+    const marketplace = diagnoseSignature(raw, signature, secrets.marketplace);
     console.warn(
       "webhook rejected",
       JSON.stringify({
-        event: request.headers.get("x-github-event"),
-        delivery: request.headers.get("x-github-delivery"),
-        hookId: request.headers.get("x-github-hook-id"),
-        target: request.headers.get("x-github-hook-installation-target-type"),
-        ...diagnoseSignature(raw, signature, process.env.GITHUB_WEBHOOK_SECRET),
+        ...meta,
+        ...app,
+        marketplaceSecretConfigured: marketplace.secretConfigured,
+        marketplaceSecretLength: marketplace.secretLength,
+        // True when the Marketplace secret did sign it but the event isn't a Marketplace event.
+        marketplaceSignedWrongEvent: verifySignature(raw, signature, secrets.marketplace),
       }),
     );
     return NextResponse.json({ error: "Bad signature" }, { status: 401 });
   }
-  const event = request.headers.get("x-github-event");
+  console.info("webhook accepted", JSON.stringify({ ...meta, source }));
   const payload = JSON.parse(raw) as Record<string, unknown>;
   const admin = createAdminClient();
 
