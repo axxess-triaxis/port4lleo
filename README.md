@@ -48,6 +48,20 @@ Audits run when the app is installed, daily, and on demand (at most once an hour
 
 **Audits are never public.** A user sees findings only for repos they can access on GitHub, and this is checked live against GitHub on every page load.
 
+## Fix bounties (PayPal + AI)
+
+Organisations can put a PayPal bounty on a Dependabot alert PORT4LLEO found. A developer fixes it, claims with the pull request, and gets paid by PayPal once the fix is verified and a maintainer approves.
+
+1. **Fund.** A repository admin or maintainer funds a bounty (1–500 USD) on an open alert with PayPal Checkout: PayPal JS SDK buttons, with Orders v2 created and captured server-side through `@paypal/paypal-server-sdk`.
+2. **Claim.** Any other signed-in developer claims it with the pull request URL and the PayPal email to be paid at. The email is stored encrypted.
+3. **Verify.** Six deterministic checks run first. The PR must be in the repo, merged, into the default branch, by the claimant and after funding, and **GitHub must report the alert `fixed`**. If all pass, an **AI agent** (Groq `gpt-oss-120b`) reviews the evidence. It uses two tools: the **PayPal Agent Toolkit**'s `get_order`, to confirm the bounty was captured, and a read-only view of the PR's diffs, to confirm the vulnerable package was actually updated. It then recommends pay or don't pay, with reasons and risks.
+4. **Approve.** A maintainer who isn't the claimant approves. PORT4LLEO re-checks GitHub, then pays through **PayPal Payouts**. The fix appears on the developer's public portfolio as a paid security fix.
+5. **Cancel.** An unclaimed bounty can be cancelled and refunded through the PayPal Payments API.
+
+**The agent can't move money.** It has no payout tool. A failed check, or a PayPal order the tool didn't itself see as `COMPLETED` for *this* bounty, overrides any "pay". A human approves every payout. Pull request content is treated as untrusted.
+
+**Sandbox only.** Live mode needs both `PAYPAL_ENV=live` and `PAYPAL_ALLOW_LIVE=true`. In production, holding funds and paying third parties requires PayPal's marketplace (multiparty) onboarding and a compliance review, which this project has not done.
+
 ## Privacy
 
 - PORT4LLEO is a GitHub App with **read-only** permissions. It has no OAuth scopes and cannot write to anything.
@@ -110,6 +124,8 @@ pnpm smoke <login> [--private]   # real GitHub API, no DB; token from $GITHUB_TO
 Layout: GitHub collectors and App auth are in `src/lib/github`, heuristics in `src/lib/classify`, the score in `src/lib/scoring`, governance checks in `src/lib/governance`, and pages and API routes in `src/app`.
 
 ## Known limitations
+
+- Fix bounties run in the PayPal sandbox; see above for what production would require. Bounties cover Dependabot alerts only, because those are the findings GitHub itself marks as fixed.
 
 - Integrations are read from **root** manifests only, so packages inside a monorepo are missed.
 - "Test runs passed" counts runs, not test cases. GitHub doesn't expose test-case counts.

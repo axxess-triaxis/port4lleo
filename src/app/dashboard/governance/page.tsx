@@ -6,10 +6,12 @@ import { connection } from "next/server";
 import { AuditButton } from "@/components/AuditButton";
 import { AuditView } from "@/components/AuditView";
 import { installUrl } from "@/lib/github/app";
+import { liveBountiesForRepos } from "@/lib/bounties/service";
 import { getUserAccessToken } from "@/lib/github/userToken";
 import { filterReportForViewer, summarize } from "@/lib/governance/audit";
 import { latestAudit } from "@/lib/governance/service";
 import { upsertInstallations, viewerInstallations, viewerRepos } from "@/lib/installations";
+import { paypalConfig } from "@/lib/paypal/config";
 import { createAdminClient, createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Governance" };
@@ -61,6 +63,10 @@ export default async function GovernancePage({ searchParams }: PageProps<"/dashb
       );
     } else {
       const visible = filterReportForViewer(audit.report, await viewerRepos(token, selected.id));
+      const live = await liveBountiesForRepos(admin, visible.repos.map((r) => r.repo));
+      const bounties = Object.fromEntries(
+        [...live].map(([k, b]) => [k, { id: b.id, status: b.status, amount: String(b.amount_value), currency: b.currency }]),
+      );
       const manageUrl =
         selected.account.type === "Organization"
           ? `https://github.com/organizations/${selected.account.login}/settings/installations/${selected.id}`
@@ -69,7 +75,14 @@ export default async function GovernancePage({ searchParams }: PageProps<"/dashb
         <div className="space-y-4">
           <AuditButton installationId={selected.id} />
           {/* Summary is recomputed from the filtered report so counts never include hidden repos. */}
-          <AuditView report={visible} summary={summarize(visible)} at={audit.created_at} manageUrl={manageUrl} />
+          <AuditView
+            report={visible}
+            summary={summarize(visible)}
+            at={audit.created_at}
+            manageUrl={manageUrl}
+            installationId={paypalConfig() ? selected.id : undefined}
+            bounties={bounties}
+          />
         </div>
       );
     }
