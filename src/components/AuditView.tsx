@@ -1,4 +1,21 @@
+import Link from "next/link";
+import { FundBountyButton } from "@/components/bounties/FundBountyButton";
+import { alertNumberFromUrl } from "@/lib/bounties/model";
 import type { AuditReport, AuditSummary, RepoAudit } from "@/lib/governance/types";
+
+/** A live fix bounty on one alert, keyed "owner/repo#alertNumber". */
+export interface AlertBounty {
+  id: string;
+  status: string;
+  amount: string;
+  currency: string;
+}
+
+interface BountyProps {
+  /** Present when the viewer may fund bounties from this view (PayPal configured). */
+  installationId?: number;
+  bounties?: Record<string, AlertBounty>;
+}
 
 const SEVERITY_ORDER = ["critical", "high", "medium", "moderate", "low", "unknown"];
 
@@ -11,7 +28,7 @@ function Stat({ label, value, alert, testId }: { label: string; value: number; a
   );
 }
 
-function RepoCard({ r }: { r: RepoAudit }) {
+function RepoCard({ r, installationId, bounties }: { r: RepoAudit } & BountyProps) {
   const deps = [...r.dependabot.findings].sort(
     (a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity),
   );
@@ -40,6 +57,7 @@ function RepoCard({ r }: { r: RepoAudit }) {
               <li key={i}>
                 <span className="font-medium uppercase text-[11px]">{f.severity}</span> {f.package}: {f.summary}{" "}
                 {f.url && <a href={f.url} className="text-accent-ink underline" target="_blank" rel="noreferrer">view</a>}
+                <AlertBountySlot repo={r.repo} url={f.url} installationId={installationId} bounties={bounties} />
               </li>
             ))}
           </Section>
@@ -93,6 +111,20 @@ function RepoCard({ r }: { r: RepoAudit }) {
   );
 }
 
+function AlertBountySlot({ repo, url, installationId, bounties }: { repo: string; url: string } & BountyProps) {
+  const n = alertNumberFromUrl(url);
+  if (!n) return null;
+  const live = bounties?.[`${repo}#${n}`];
+  if (live) {
+    return (
+      <Link href={`/bounties/${live.id}`} className="ml-2 rounded-full border border-accent px-2 text-[11px] font-medium text-accent-ink">
+        {new Intl.NumberFormat("en-US", { style: "currency", currency: live.currency }).format(Number(live.amount))} bounty · {live.status}
+      </Link>
+    );
+  }
+  return installationId ? <FundBountyButton installationId={installationId} repo={repo} alertNumber={n} /> : null;
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
@@ -107,7 +139,9 @@ export function AuditView({
   summary,
   at,
   manageUrl,
-}: {
+  installationId,
+  bounties,
+}: BountyProps & {
   report: AuditReport;
   summary: AuditSummary;
   at: string;
@@ -174,7 +208,7 @@ export function AuditView({
       )}
       <div className="space-y-3">
         {report.repos.map((r) => (
-          <RepoCard key={r.repo} r={r} />
+          <RepoCard key={r.repo} r={r} installationId={installationId} bounties={bounties} />
         ))}
       </div>
     </div>
