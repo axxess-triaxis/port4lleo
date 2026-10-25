@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore, useTransition } from "react";
+import { PluginTokens, type PluginTokenRow } from "@/components/PluginTokens";
 
 const noopSubscribe = () => () => {};
 
@@ -13,6 +14,8 @@ interface Props {
   overridesYaml: string;
   /** GitHub App install page, when the App is configured. */
   installUrl: string | null;
+  /** The user's Claude plugin tokens (hash never included). */
+  pluginTokens: PluginTokenRow[];
 }
 
 const EXAMPLE = `hackathons:
@@ -31,7 +34,7 @@ async function send(url: string, init: RequestInit): Promise<string | null> {
   return body.error ?? `Request failed (${res.status})`;
 }
 
-export function DashboardControls({ login, isPublic, includePrivate, lastSyncedAt, overridesYaml, installUrl }: Props) {
+export function DashboardControls({ login, isPublic, includePrivate, lastSyncedAt, overridesYaml, installUrl, pluginTokens }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -182,6 +185,8 @@ export function DashboardControls({ login, isPublic, includePrivate, lastSyncedA
             Save corrections
           </button>
         </details>
+
+        <PluginTokens tokens={pluginTokens} />
       </div>
     </div>
   );

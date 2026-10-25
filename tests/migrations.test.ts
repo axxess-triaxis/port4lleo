@@ -55,7 +55,7 @@ describe("migrations: privileges + RLS", () => {
     expect((await as("anon", null, "select * from public.overrides")).error).toBeNull();
   });
 
-  it.each(["github_tokens", "vercel_tokens", "installations", "audits", "marketplace_events"])(
+  it.each(["github_tokens", "vercel_tokens", "installations", "audits", "marketplace_events", "plugin_tokens"])(
     "anon and authenticated are refused %s entirely",
     async (table) => {
       expect((await as("anon", null, `select * from public.${table}`)).error).toMatch(/permission denied/);
@@ -79,5 +79,56 @@ describe("migrations: privileges + RLS", () => {
   it("uninstall cascades: deleting an installation removes its audits", async () => {
     await as("service_role", null, "delete from public.installations where id = 7");
     expect((await as<{ n: number }>("service_role", null, "select count(*)::int n from public.audits")).rows[0].n).toBe(0);
+  });
+});
+
+describe("plugin tokens", () => {
+  const HASH = "a".repeat(64);
+  const REVOKED = "b".repeat(64);
+  type Use = { user_id: string; allowed: boolean; retry_after_seconds: number };
+  const use = (hash: string, limit = 3, role: "service_role" | "anon" | "authenticated" = "service_role") =>
+    as<Use>(role, role === "authenticated" ? ALICE : null, `select * from public.use_plugin_token('${hash}', ${limit}, 600)`);
+
+  beforeAll(async () => {
+    await db.exec(`
+      insert into public.plugin_tokens (user_id, token_hash, last4) values ('${ALICE}', '${HASH}', 'wxyz');
+      insert into public.plugin_tokens (user_id, token_hash, last4, revoked) values ('${ALICE}', '${REVOKED}', 'abcd', true);`);
+  });
+
+  it("only hashes are accepted", async () => {
+    expect((await as("service_role", null, `insert into public.plugin_tokens (user_id, token_hash, last4) values ('${ALICE}', 'p4l_plaintext', 'text')`)).error).toMatch(/check constraint/);
+  });
+
+  it("counts requests per window and refuses past the limit, with a retry time", async () => {
+    const results = [];
+    for (let i = 0; i < 4; i++) results.push((await use(HASH)).rows[0]);
+    expect(results.map((r) => r.allowed)).toEqual([true, true, true, false]);
+    expect(results.every((r) => r.user_id === ALICE)).toBe(true);
+    expect(results[3].retry_after_seconds).toBeGreaterThan(0);
+    expect(results[3].retry_after_seconds).toBeLessThanOrEqual(600);
+    const row = await as<{ last_used_at: string | null }>("service_role", null, `select last_used_at from public.plugin_tokens where token_hash = '${HASH}'`);
+    expect(row.rows[0].last_used_at).not.toBeNull();
+  });
+
+  it("starts a new window once the old one has passed", async () => {
+    await db.exec(`update public.plugin_tokens set window_started_at = now() - interval '11 minutes' where token_hash = '${HASH}'`);
+    expect((await use(HASH)).rows[0].allowed).toBe(true);
+  });
+
+  it("returns nothing for revoked or unknown tokens", async () => {
+    expect((await use(REVOKED)).rows).toEqual([]);
+    expect((await use("c".repeat(64))).rows).toEqual([]);
+  });
+
+  it("only the server may call the lookup", async () => {
+    expect((await use(HASH, 3, "anon")).error).toMatch(/permission denied/);
+    expect((await use(HASH, 3, "authenticated")).error).toMatch(/permission denied/);
+  });
+
+  it("deleting a profile removes its tokens", async () => {
+    await db.exec(`insert into public.plugin_tokens (user_id, token_hash, last4) values ('${BOB}', '${"d".repeat(64)}', 'zzzz')`);
+    await db.exec(`delete from public.profiles where id = '${BOB}'`);
+    const n = await as<{ n: number }>("service_role", null, `select count(*)::int n from public.plugin_tokens where user_id = '${BOB}'`);
+    expect(n.rows[0].n).toBe(0);
   });
 });

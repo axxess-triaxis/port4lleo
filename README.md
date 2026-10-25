@@ -59,6 +59,11 @@ activity.
 /plugin install port4lleo@port4lleo
 ```
 
+Optionally, link the plugin to your PORT4LLEO account with a token from the dashboard
+("Claude plugin: link your account") to read your stored score and re-sync it from
+Claude. Tokens are stored as SHA-256 hashes, rate-limited, and revocable; they can't
+change settings or move money.
+
 See [claude-plugin/README.md](claude-plugin/README.md).
 
 ## Privacy

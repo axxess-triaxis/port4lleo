@@ -4,13 +4,15 @@
  *
  * It runs the website's own collector, scoring, overrides and governance code,
  * locally, with the user's GitHub token (GITHUB_TOKEN / GH_TOKEN, else `gh auth token`).
- * Nothing is sent anywhere except the GitHub API.
+ * Nothing is sent anywhere except the GitHub API -- apart from the `remote` commands, which
+ * call the PORT4LLEO website with the user's own plugin token (see ./remote.ts).
  *
  *   score <login> [--include-private]
  *   audit <account> [--repos a,b] [--max-repos N]
  *   portfolio validate <file>      portfolio show <login>
  *   activity <account> [--date YYYY-MM-DD]
  *   daily <account>                (activity check, then score + audit if active)
+ *   remote portfolio | resync      linked PORT4LLEO account (needs PORT4LLEO_TOKEN)
  *
  * Global: --log-dir <dir> writes <dir>/<date>/<command>-<target>.json and appends one
  * line per run to <dir>/runs.jsonl. --out <file> writes the full JSON result there.
@@ -25,6 +27,7 @@ import { DEFAULT_LIMITS, listAccountRepos, runAudit, summarize } from "@/lib/gov
 import { applyOverrides, parseOverridesYaml } from "@/lib/overrides/overrides";
 import { fetchProfileYaml } from "@/lib/overrides/profileYaml";
 import { computeScore } from "@/lib/scoring/score";
+import { remoteCall, remoteConfig, remoteHeadline, REMOTE_ACTIONS, type RemoteAction } from "./remote";
 
 export class UsageError extends Error {}
 
@@ -200,9 +203,15 @@ const HELP = `port4lleo <command>
   portfolio show <login>                     Fetch and check <login>/<login>/portfolio.yml
   activity <account> [--date YYYY-MM-DD]     Was there GitHub activity that day?
   daily <account>                            Activity check; if active, score + audit
+  remote portfolio | resync                  Linked PORT4LLEO account (PORT4LLEO_TOKEN, PORT4LLEO_URL)
 Global: --log-dir <dir>  --out <file>  --full (print full audit report)`;
 
-export async function run(argv: string[], makeClient = (t: string) => createGitHubClient(t)): Promise<{ output: unknown; headline: string; command: string; target: string }> {
+export async function run(
+  argv: string[],
+  makeClient = (t: string) => createGitHubClient(t),
+  env: Record<string, string | undefined> = process.env,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ output: unknown; headline: string; command: string; target: string }> {
   const args = parseArgs(argv);
   const target = args.positional[0];
   const need = (what: string) => {
@@ -263,6 +272,12 @@ export async function run(argv: string[], makeClient = (t: string) => createGitH
         command: "daily",
         target: account,
       };
+    }
+    case "remote": {
+      const action = args.positional[0];
+      if (!action || !Object.hasOwn(REMOTE_ACTIONS, action)) throw new UsageError(HELP);
+      const out = await remoteCall(action as RemoteAction, remoteConfig(env), fetchImpl);
+      return { output: out, headline: remoteHeadline(action as RemoteAction, out), command: `remote-${action}`, target: "account" };
     }
     default:
       throw new UsageError(HELP);

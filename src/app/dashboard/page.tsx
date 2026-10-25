@@ -6,7 +6,7 @@ import { DashboardControls } from "@/components/DashboardControls";
 import { PortfolioView } from "@/components/PortfolioView";
 import { installUrl } from "@/lib/github/app";
 import { getPortfolioByUserId } from "@/lib/portfolio";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { createAdminClient, createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -27,6 +27,13 @@ export default async function DashboardPage() {
   if (!profile) redirect("/auth/signin");
 
   const portfolio = await getPortfolioByUserId(user.id, profile.is_public);
+  // plugin_tokens is server-only (no client grants); never select token_hash here.
+  const { data: pluginTokens } = await createAdminClient()
+    .from("plugin_tokens")
+    .select("id, last4, revoked, created_at, last_used_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(20);
   const hasOverrides =
     portfolio &&
     (portfolio.overrides.apps.length ||
@@ -43,6 +50,7 @@ export default async function DashboardPage() {
         lastSyncedAt={profile.last_synced_at}
         overridesYaml={hasOverrides ? stringify(portfolio.overrides) : ""}
         installUrl={installUrl()}
+        pluginTokens={pluginTokens ?? []}
       />
       {portfolio ? (
         <PortfolioView p={portfolio} />
