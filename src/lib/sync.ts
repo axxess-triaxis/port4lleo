@@ -1,26 +1,14 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { decrypt } from "@/lib/crypto";
-import { createGitHubClient, GitHubError, type GitHubClient } from "@/lib/github/client";
+import { createGitHubClient } from "@/lib/github/client";
 import { collectBuilderMetrics } from "@/lib/github/collect";
 import { getUserAccessToken } from "@/lib/github/userToken";
-import { applyOverrides, EMPTY_OVERRIDES, overridesSchema, parseOverridesYaml } from "@/lib/overrides/overrides";
+import { applyOverrides, EMPTY_OVERRIDES, overridesSchema } from "@/lib/overrides/overrides";
+import { fetchProfileYaml } from "@/lib/overrides/profileYaml";
 import { computeScore } from "@/lib/scoring/score";
 
 export const SYNC_COOLDOWN_MS = 60 * 60 * 1000;
-
-/** portfolio.yml from the `<login>/<login>` profile repo, if present and valid. */
-async function fetchProfileYaml(gh: GitHubClient, login: string) {
-  try {
-    const file = await gh.rest<{ content: string; encoding: string }>(`/repos/${login}/${login}/contents/portfolio.yml`);
-    const text = Buffer.from(file.content, file.encoding === "base64" ? "base64" : "utf8").toString("utf8");
-    const parsed = parseOverridesYaml(text);
-    return parsed.ok ? { overrides: parsed.value, error: null } : { overrides: EMPTY_OVERRIDES, error: parsed.error };
-  } catch (e) {
-    if (e instanceof GitHubError && e.status === 404) return { overrides: EMPTY_OVERRIDES, error: null };
-    throw e;
-  }
-}
 
 export interface SyncResult {
   score: number;

@@ -1,0 +1,19 @@
+{
+  "name": "port4lleo",
+  "displayName": "PORT4LLEO",
+  "version": "0.1.0",
+  "description": "Builder Score portfolios and repository governance audits for GitHub, run locally with your gh login: score any builder 0-1000 with every metric's source shown, audit an org for Dependabot gaps, untested deploys, stale PRs, conflict merges, masked PII and sprawl, and keep dated daily reports on active days.",
+  "author": {
+    "name": "Triaxis Ventures",
+    "url": "https://github.com/axxess-triaxis"
+  },
+  "homepage": "https://port4leo-sigma.vercel.app",
+  "repository": "https://github.com/axxess-triaxis/port4lleo",
+  "license": "MIT",
+  "keywords": ["github", "portfolio", "builder-score", "governance", "dependabot", "audit", "security"],
+  "icon": "./assets/icon.png",
+  "documentationUrl": "https://github.com/axxess-triaxis/port4lleo/tree/main/claude-plugin",
+  "supportUrl": "https://port4leo-sigma.vercel.app/support",
+  "privacyPolicyUrl": "https://port4leo-sigma.vercel.app/privacy",
+  "termsOfServiceUrl": "https://port4leo-sigma.vercel.app/terms"
+}

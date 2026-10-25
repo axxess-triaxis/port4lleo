@@ -22,6 +22,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
+      - name: Claude plugin bundle is up to date
+        run: node scripts/build-plugin.mjs --check
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm e2e

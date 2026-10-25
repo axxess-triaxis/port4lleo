@@ -48,6 +48,19 @@ Audits run when the app is installed, daily, and on demand (at most once an hour
 
 **Audits are never public.** A user sees findings only for repos they can access on GitHub, and this is checked live against GitHub on every page load.
 
+## Claude plugin
+
+The Builder Score and the governance audit also run inside Claude, locally, with your
+`gh` login, through the same code. There's a daily report too, for days with GitHub
+activity.
+
+```
+/plugin marketplace add axxess-triaxis/port4lleo
+/plugin install port4lleo@port4lleo
+```
+
+See [claude-plugin/README.md](claude-plugin/README.md).
+
 ## Fix bounties (PayPal + AI)
 
 Organisations can put a PayPal bounty on a Dependabot alert PORT4LLEO found. A developer fixes it, claims with the pull request, and gets paid by PayPal once the fix is verified and a maintainer approves.
