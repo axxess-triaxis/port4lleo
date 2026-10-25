@@ -1,7 +1,7 @@
 /**
  * Client for the PORT4LLEO website's /api/plugin routes: the optional "linked account" half
  * of the plugin. Read-only apart from asking the server to re-sync; it never sends metrics,
- * and never funds, claims or pays anything.
+ * and never funds, claims or pays anything (bounties are listed, not acted on).
  *
  * Config: PORT4LLEO_TOKEN (a p4l_ token from the dashboard) and PORT4LLEO_URL (optional).
  * Inside Claude Code these come from the plugin's userConfig, passed to the MCP server's env.
@@ -13,6 +13,7 @@ const TOKEN_RE = /^p4l_[A-Za-z0-9_-]{43}$/;
 export const REMOTE_ACTIONS = {
   portfolio: { method: "GET", path: "/api/plugin/portfolio", timeoutMs: 30_000 },
   resync: { method: "POST", path: "/api/plugin/resync", timeoutMs: 310_000 },
+  bounties: { method: "GET", path: "/api/plugin/bounties", timeoutMs: 70_000 },
 } as const;
 export type RemoteAction = keyof typeof REMOTE_ACTIONS;
 
@@ -91,5 +92,9 @@ export function remoteHeadline(action: RemoteAction, out: unknown): string {
         : `${o.login}: ${o.score} (${o.tier}), last synced ${o.lastSyncedAt ?? "never"}`;
     case "resync":
       return `${o.login}: re-synced, ${o.score} (${o.tier})`;
+    case "bounties": {
+      const list = Array.isArray(o.bounties) ? o.bounties : [];
+      return `${list.length} live bount${list.length === 1 ? "y" : "ies"} across ${o.reposChecked ?? 0} accessible repos plus the public board`;
+    }
   }
 }

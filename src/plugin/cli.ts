@@ -12,7 +12,7 @@
  *   portfolio validate <file>      portfolio show <login>
  *   activity <account> [--date YYYY-MM-DD]
  *   daily <account>                (activity check, then score + audit if active)
- *   remote portfolio | resync      linked PORT4LLEO account (needs PORT4LLEO_TOKEN)
+ *   remote portfolio | resync | bounties  linked PORT4LLEO account (needs PORT4LLEO_TOKEN)
  *
  * Global: --log-dir <dir> writes <dir>/<date>/<command>-<target>.json and appends one
  * line per run to <dir>/runs.jsonl. --out <file> writes the full JSON result there.
@@ -203,7 +203,7 @@ const HELP = `port4lleo <command>
   portfolio show <login>                     Fetch and check <login>/<login>/portfolio.yml
   activity <account> [--date YYYY-MM-DD]     Was there GitHub activity that day?
   daily <account>                            Activity check; if active, score + audit
-  remote portfolio | resync                  Linked PORT4LLEO account (PORT4LLEO_TOKEN, PORT4LLEO_URL)
+  remote portfolio | resync | bounties       Linked PORT4LLEO account (PORT4LLEO_TOKEN, PORT4LLEO_URL)
 Global: --log-dir <dir>  --out <file>  --full (print full audit report)`;
 
 export async function run(
