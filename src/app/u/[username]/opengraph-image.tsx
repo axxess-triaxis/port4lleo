@@ -27,10 +27,12 @@ export default async function Image({ params }: { params: Promise<{ username: st
         <div style={{ display: "flex", fontSize: 32, color: "#52514e" }}>PORT4LLEO</div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 64, fontWeight: 700 }}>{name}</div>
-          <div style={{ fontSize: 32, color: "#52514e" }}>@{p?.metrics.profile.login ?? username}</div>
+          {/* One string child: next/og (Satori) rejects a <div> with several children unless it is display:flex. */}
+          <div style={{ fontSize: 32, color: "#52514e" }}>{`@${p?.metrics.profile.login ?? username}`}</div>
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 24 }}>
-          <div style={{ fontSize: 140, fontWeight: 700, color: "#1c5cab" }}>{p ? p.score.score : "—"}</div>
+          {/* A string, not a number: Satori rejects a numeric child the same way. */}
+          <div style={{ fontSize: 140, fontWeight: 700, color: "#1c5cab" }}>{p ? String(p.score.score) : "—"}</div>
           <div style={{ fontSize: 40, color: "#52514e" }}>{p ? `/ 1000 · ${p.score.tier}` : "not found"}</div>
         </div>
       </div>
