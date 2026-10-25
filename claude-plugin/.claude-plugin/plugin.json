@@ -1,8 +1,8 @@
 {
   "name": "port4lleo",
   "displayName": "PORT4LLEO",
-  "version": "0.1.0",
-  "description": "Builder Score portfolios and repository governance audits for GitHub, run locally with your gh login: score any builder 0-1000 with every metric's source shown, audit an org for Dependabot gaps, untested deploys, stale PRs, conflict merges, masked PII and sprawl, and keep dated daily reports on active days.",
+  "version": "0.2.0",
+  "description": "Builder Score portfolios and repository governance audits for GitHub, run locally with your gh login: score any builder 0-1000 with every metric's source shown, audit an org for Dependabot gaps, untested deploys, stale PRs, conflict merges, masked PII and sprawl, and keep dated daily reports on active days. Optionally link your PORT4LLEO account to read your stored score and re-sync it.",
   "author": {
     "name": "Triaxis Ventures",
     "url": "https://github.com/axxess-triaxis"
@@ -10,10 +10,45 @@
   "homepage": "https://port4leo-sigma.vercel.app",
   "repository": "https://github.com/axxess-triaxis/port4lleo",
   "license": "MIT",
-  "keywords": ["github", "portfolio", "builder-score", "governance", "dependabot", "audit", "security"],
+  "keywords": [
+    "github",
+    "portfolio",
+    "builder-score",
+    "governance",
+    "dependabot",
+    "audit",
+    "security"
+  ],
   "icon": "./assets/icon.png",
   "documentationUrl": "https://github.com/axxess-triaxis/port4lleo/tree/main/claude-plugin",
   "supportUrl": "https://port4leo-sigma.vercel.app/support",
   "privacyPolicyUrl": "https://port4leo-sigma.vercel.app/privacy",
-  "termsOfServiceUrl": "https://port4leo-sigma.vercel.app/terms"
+  "termsOfServiceUrl": "https://port4leo-sigma.vercel.app/terms",
+  "userConfig": {
+    "api_token": {
+      "type": "string",
+      "title": "PORT4LLEO account token (optional)",
+      "description": "Links the plugin to your PORT4LLEO account so it can read your stored score and ask the website to re-sync. Create one on your PORT4LLEO dashboard under \"Claude plugin: link your account\". Leave empty to use the plugin locally only.",
+      "sensitive": true
+    },
+    "base_url": {
+      "type": "string",
+      "title": "PORT4LLEO website URL",
+      "description": "Only change this for a self-hosted PORT4LLEO. Must be https.",
+      "default": "https://port4leo-sigma.vercel.app"
+    }
+  },
+  "mcpServers": {
+    "port4lleo": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/scripts/port4lleo.mjs",
+        "mcp"
+      ],
+      "env": {
+        "PORT4LLEO_TOKEN": "${user_config.api_token}",
+        "PORT4LLEO_URL": "${user_config.base_url}"
+      }
+    }
+  }
 }

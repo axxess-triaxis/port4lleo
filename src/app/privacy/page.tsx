@@ -36,6 +36,10 @@ export default function PrivacyPage() {
             excerpt (the first two and last two characters). The full value is never stored or shown.
           </li>
           <li>GitHub and Vercel access tokens, encrypted with AES-256-GCM. They are used only to refresh your data.</li>
+          <li>
+            If you create one, a Claude plugin token: only its SHA-256 hash, last four characters, and when it was
+            created and last used. Revoke it from the dashboard at any time.
+          </li>
           <li>Corrections you enter, such as hackathons or prototypes.</li>
         </ul>
         <p>PORT4LLEO does not sell data, show ads or use your code to train models.</p>

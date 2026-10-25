@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { SYNC_COOLDOWN_MS, syncUser } from "@/lib/sync";
+import { syncCooldownRemainingMs, syncUser } from "@/lib/sync";
 
 export const maxDuration = 300;
 
@@ -16,8 +16,7 @@ export async function POST() {
 
   const admin = createAdminClient();
   const { data: profile } = await admin.from("profiles").select("last_synced_at").eq("id", user.id).single();
-  const last = profile?.last_synced_at ? new Date(profile.last_synced_at).getTime() : 0;
-  const wait = last + SYNC_COOLDOWN_MS - Date.now();
+  const wait = syncCooldownRemainingMs(profile?.last_synced_at);
   if (wait > 0) {
     return NextResponse.json(
       { error: `Synced recently. Try again in ${Math.ceil(wait / 60000)} min.` },
