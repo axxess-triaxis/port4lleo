@@ -1,5 +1,5 @@
 import pLimit from "p-limit";
-import type { GitHubClient } from "@/lib/github/client";
+import { GitHubError, type GitHubClient } from "@/lib/github/client";
 import { checkDependabot, checkStalePrs, checkUntestedDeploys, fetchRecentCommits, findConflictMerges } from "./checks";
 import { checkPii } from "./pii";
 import { checkSprawl } from "./sprawl";
@@ -30,6 +30,25 @@ export async function listInstallationRepos(gh: GitHubClient, cap = 500): Promis
     if (body.repositories.length < 100 || out.length >= body.total_count) break;
   }
   return out.slice(0, cap);
+}
+
+/**
+ * An account's repositories with a personal token (the Claude plugin's path, which
+ * has no app installation): org repos if `account` is an org; the token owner's own
+ * repos (private included) if it is the authenticated user; otherwise public ones.
+ */
+export async function listAccountRepos(gh: GitHubClient, account: string, cap = 500): Promise<InstallationRepo[]> {
+  const q = "per_page=100";
+  try {
+    return await gh.restAll<InstallationRepo>(`/orgs/${encodeURIComponent(account)}/repos?type=all&${q}`, cap);
+  } catch (e) {
+    if (!(e instanceof GitHubError) || e.status !== 404) throw e;
+  }
+  const me = await gh.rest<{ login: string }>("/user").catch(() => null);
+  if (me && me.login.toLowerCase() === account.toLowerCase()) {
+    return gh.restAll<InstallationRepo>(`/user/repos?affiliation=owner&${q}`, cap);
+  }
+  return gh.restAll<InstallationRepo>(`/users/${encodeURIComponent(account)}/repos?type=owner&${q}`, cap);
 }
 
 async function auditRepo(gh: GitHubClient, r: InstallationRepo, limits: AuditLimits, now: Date): Promise<RepoAudit> {
@@ -64,11 +83,15 @@ export async function runAudit(
   account: string,
   limits: AuditLimits = DEFAULT_LIMITS,
   now = new Date(),
+  listRepos: (gh: GitHubClient) => Promise<InstallationRepo[]> = listInstallationRepos,
+  onlyRepos?: string[],
 ): Promise<AuditReport> {
   const startedAt = new Date().toISOString();
-  const all = await listInstallationRepos(gh);
+  const all = await listRepos(gh);
+  const wanted = onlyRepos?.length ? new Set(onlyRepos.map((n) => n.toLowerCase())) : null;
   const targets = all
     .filter((r) => !r.archived)
+    .filter((r) => !wanted || wanted.has(r.name.toLowerCase()) || wanted.has(r.full_name.toLowerCase()))
     .sort((a, b) => (b.pushed_at ?? "").localeCompare(a.pushed_at ?? ""))
     .slice(0, limits.maxRepos);
   const limit = pLimit(3);
