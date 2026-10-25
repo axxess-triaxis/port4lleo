@@ -1,0 +1,14 @@
+{
+  "name": "port4lleo",
+  "description": "PORT4LLEO - Builder Score portfolios and GitHub governance audits for Claude.",
+  "owner": {
+    "name": "Triaxis Ventures"
+  },
+  "plugins": [
+    {
+      "name": "port4lleo",
+      "source": "./claude-plugin",
+      "description": "Score GitHub builders 0-1000 and audit repositories for governance gaps, locally with your gh login."
+    }
+  ]
+}
