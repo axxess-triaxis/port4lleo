@@ -34,6 +34,13 @@ export const TOOLS: Tool[] = [
       "Ask the PORT4LLEO website to re-collect the linked account's metrics from GitHub and store a new score. Allowed once an hour; takes up to a few minutes.",
     readOnly: false,
   },
+  {
+    name: "remote_bounties",
+    action: "bounties",
+    description:
+      "Read-only list of funded, claimed or verified fix bounties on repositories the linked account can access on GitHub, plus open bounties on public repositories. Each has a link to its page on the PORT4LLEO website.",
+    readOnly: true,
+  },
 ];
 
 interface JsonRpcRequest {

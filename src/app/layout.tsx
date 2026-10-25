@@ -26,6 +26,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/u/demo" className="hover:text-ink">
                 Demo
               </Link>
+              <Link href="/bounties" className="hover:text-ink">
+                Bounties
+              </Link>
               <Link href="/scoring" className="hover:text-ink">
                 <span className="hidden sm:inline">How scoring works</span>
                 <span className="sm:hidden">Scoring</span>
