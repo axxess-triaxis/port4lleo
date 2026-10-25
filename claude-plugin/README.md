@@ -11,6 +11,29 @@ Code, with the same code the [PORT4LLEO website](https://port4leo-sigma.vercel.a
 | `port4lleo:governance-audit` | Audits an org or user: Dependabot alerts (with "alerts off" and "not readable" kept apart from clean), untested deploys, stale PRs, conflict-resolution merges, possible PII (masked), repo sprawl |
 | `port4lleo:portfolio-yml` | Drafts and validates `portfolio.yml`, the self-declared corrections for things GitHub can't see |
 | `port4lleo:daily-report` | On days with GitHub activity, runs the score and the audit, writes a dated report, and appends one line to `runs.jsonl`; on quiet days it logs a skip |
+| `port4lleo:sync` | With a linked account: reads the score stored on the PORT4LLEO website, or asks the website to re-sync it (once an hour) |
+
+## Link your PORT4LLEO account (optional)
+
+Everything above works without an account. To also read your stored score and trigger a
+re-sync from Claude:
+
+1. Sign in at the [PORT4LLEO website](https://port4leo-sigma.vercel.app), open the
+   dashboard, and under **Claude plugin: link your account** press **Create token**.
+   The `p4l_…` token is shown once.
+2. Set it as the plugin's `api_token` option when Claude Code asks on enabling the
+   plugin (it is stored in your system's credential store, not in `settings.json`).
+
+The token only lets the plugin read your stored score and ask the website to re-sync,
+at most 30 requests per 10 minutes. It can't change settings, and the plugin never funds,
+claims or pays bounties; those stay on the website with a human approving. Revoke a token
+on the dashboard at any time.
+
+Outside Claude Code, the same calls work from the script with environment variables:
+
+```bash
+PORT4LLEO_TOKEN=p4l_... node claude-plugin/scripts/port4lleo.mjs remote portfolio
+```
 
 ## Install
 
@@ -28,7 +51,8 @@ environment that runs them.
 ## Privacy
 
 Everything runs on your machine. The plugin calls the GitHub API with your own token
-and nothing else, and sends no data to PORT4LLEO. Private repositories are counted
+and nothing else, and sends no data to PORT4LLEO, unless you link an account: then the
+`sync` skill sends your PORT4LLEO token (and nothing else) to the PORT4LLEO website. Private repositories are counted
 only when you score your own account with `--include-private`, and are never named.
 PII findings are stored masked (first two and last two characters only).
 
