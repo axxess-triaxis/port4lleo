@@ -28264,7 +28264,8 @@ var DEFAULT_BASE_URL = "https://port4leo-sigma.vercel.app";
 var TOKEN_RE = /^p4l_[A-Za-z0-9_-]{43}$/;
 var REMOTE_ACTIONS = {
   portfolio: { method: "GET", path: "/api/plugin/portfolio", timeoutMs: 3e4 },
-  resync: { method: "POST", path: "/api/plugin/resync", timeoutMs: 31e4 }
+  resync: { method: "POST", path: "/api/plugin/resync", timeoutMs: 31e4 },
+  bounties: { method: "GET", path: "/api/plugin/bounties", timeoutMs: 7e4 }
 };
 var RemoteError = class extends Error {
   constructor(message, status = null) {
@@ -28321,6 +28322,10 @@ function remoteHeadline(action, out) {
       return o.score === null || o.score === void 0 ? `${o.login}: no stored score yet` : `${o.login}: ${o.score} (${o.tier}), last synced ${o.lastSyncedAt ?? "never"}`;
     case "resync":
       return `${o.login}: re-synced, ${o.score} (${o.tier})`;
+    case "bounties": {
+      const list = Array.isArray(o.bounties) ? o.bounties : [];
+      return `${list.length} live bount${list.length === 1 ? "y" : "ies"} across ${o.reposChecked ?? 0} accessible repos plus the public board`;
+    }
   }
 }
 
@@ -28454,7 +28459,7 @@ var HELP = `port4lleo <command>
   portfolio show <login>                     Fetch and check <login>/<login>/portfolio.yml
   activity <account> [--date YYYY-MM-DD]     Was there GitHub activity that day?
   daily <account>                            Activity check; if active, score + audit
-  remote portfolio | resync                  Linked PORT4LLEO account (PORT4LLEO_TOKEN, PORT4LLEO_URL)
+  remote portfolio | resync | bounties       Linked PORT4LLEO account (PORT4LLEO_TOKEN, PORT4LLEO_URL)
 Global: --log-dir <dir>  --out <file>  --full (print full audit report)`;
 async function run(argv, makeClient = (t) => createGitHubClient(t), env = process.env, fetchImpl = fetch) {
   const args = parseArgs(argv);
@@ -28572,6 +28577,12 @@ var TOOLS = [
     action: "resync",
     description: "Ask the PORT4LLEO website to re-collect the linked account's metrics from GitHub and store a new score. Allowed once an hour; takes up to a few minutes.",
     readOnly: false
+  },
+  {
+    name: "remote_bounties",
+    action: "bounties",
+    description: "Read-only list of funded, claimed or verified fix bounties on repositories the linked account can access on GitHub, plus open bounties on public repositories. Each has a link to its page on the PORT4LLEO website.",
+    readOnly: true
   }
 ];
 async function handleMcpMessage(msg2, deps) {
@@ -28632,6 +28643,6 @@ function serveMcp(deps) {
 }
 
 // src/plugin/main.ts
-var VERSION = "0.2.0";
+var VERSION = "0.3.0";
 if (process.argv[2] === "mcp") serveMcp({ env: process.env, fetchImpl: fetch, version: VERSION });
 else void main();
