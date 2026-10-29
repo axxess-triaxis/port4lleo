@@ -55,7 +55,7 @@ describe("migrations: privileges + RLS", () => {
     expect((await as("anon", null, "select * from public.overrides")).error).toBeNull();
   });
 
-  it.each(["github_tokens", "vercel_tokens", "installations", "audits", "marketplace_events"])(
+  it.each(["github_tokens", "vercel_tokens", "installations", "audits", "marketplace_events", "bounties", "bounty_events"])(
     "anon and authenticated are refused %s entirely",
     async (table) => {
       expect((await as("anon", null, `select * from public.${table}`)).error).toMatch(/permission denied/);
@@ -79,5 +79,40 @@ describe("migrations: privileges + RLS", () => {
   it("uninstall cascades: deleting an installation removes its audits", async () => {
     await as("service_role", null, "delete from public.installations where id = 7");
     expect((await as<{ n: number }>("service_role", null, "select count(*)::int n from public.audits")).rows[0].n).toBe(0);
+  });
+
+  describe("fix bounties", () => {
+    const insert = (extra: string, cols = "") =>
+      `insert into public.bounties (repo, alert_number, alert_url, severity, package, amount_value, funder_user_id, funder_login${cols})
+       values ('acme/web', 3, 'u', 'high', 'next', 25, '${ALICE}', 'alice'${extra}) returning id`;
+
+    it("the server can create a draft bounty and log events against it", async () => {
+      const { rows, error } = await as<{ id: string }>("service_role", null, insert(""));
+      expect(error).toBeNull();
+      expect((await as("service_role", null, `insert into public.bounty_events (bounty_id, kind) values ('${rows[0].id}', 'created')`)).error).toBeNull();
+    });
+
+    it("allows only one live bounty per alert", async () => {
+      expect((await as("service_role", null, insert(""))).error).toMatch(/bounties_one_live_per_alert/);
+    });
+
+    it("rejects out-of-range amounts and a funded status without a PayPal capture", async () => {
+      expect((await as("service_role", null, insert("", "").replace("25,", "0.5,").replace("alert_number, alert_url", "alert_number, alert_url").replace("'acme/web', 3", "'acme/web', 4"))).error).toMatch(/check constraint/);
+      expect((await as("service_role", null, insert(", 'funded'", ", status").replace("'acme/web', 3", "'acme/web', 5"))).error).toMatch(/funded_has_capture/);
+    });
+
+    it("a paid bounty must record the payout and who was paid", async () => {
+      expect(
+        (await as("service_role", null, insert(", 'paid', 'cap-1'", ", status, paypal_capture_id").replace("'acme/web', 3", "'acme/web', 6"))).error,
+      ).toMatch(/paid_has_payout/);
+    });
+
+    it("deleting an installation keeps its bounties (money records are never cascaded away)", async () => {
+      await as("service_role", null, `insert into public.installations (id, account_login, account_type) values (8,'acme','Organization')`);
+      const { rows } = await as<{ id: string }>("service_role", null, insert(", 8", ", installation_id").replace("'acme/web', 3", "'acme/web', 9"));
+      await as("service_role", null, "delete from public.installations where id = 8");
+      const left = await as<{ installation_id: number | null }>("service_role", null, `select installation_id from public.bounties where id = '${rows[0].id}'`);
+      expect(left.rows).toEqual([{ installation_id: null }]);
+    });
   });
 });
