@@ -12,6 +12,13 @@ An open-source GitHub App with two jobs:
 1. **Builder portfolio.** It turns your GitHub account into a shareable portfolio of what you shipped and how you ship, with a transparent **Builder Score** out of 1000.
 2. **Repository governance.** Install it on an account or organization and it audits the repositories for the failure modes AI-assisted teams actually hit. This part started as [RepoWatch](https://github.com/axxess-triaxis/RepoWatch).
 
+**Live:** https://port4leo-sigma.vercel.app (200 on 2026-10-29), with a README badge at
+`https://port4leo-sigma.vercel.app/api/badge/<login>`. CI (`verify`) passed on `main` at 15c20e4.
+
+In the Triaxis stack, PORT4LLEO automates governance, security checks, builder analysis and
+product improvements. Governance, security checks and builder analysis are on `main` and live.
+Product improvements (fix bounties) are **not merged yet**; see [Work in open PRs](#work-in-open-prs).
+
 ## Portfolio
 
 Sign in with GitHub and you get a shareable page at `/u/<your-login>` with:
@@ -65,6 +72,20 @@ Claude. Tokens are stored as SHA-256 hashes, rate-limited, and revocable; they c
 change settings or move money.
 
 See [claude-plugin/README.md](claude-plugin/README.md).
+
+## Fix bounties (PayPal + AI)
+
+Organisations can put a PayPal bounty on a Dependabot alert PORT4LLEO found. A developer fixes it, claims with the pull request, and gets paid by PayPal once the fix is verified and a maintainer approves.
+
+1. **Fund.** A repository admin or maintainer funds a bounty (1–500 USD) on an open alert with PayPal Checkout: PayPal JS SDK buttons, with Orders v2 created and captured server-side through `@paypal/paypal-server-sdk`.
+2. **Claim.** Any other signed-in developer claims it with the pull request URL and the PayPal email to be paid at. The email is stored encrypted.
+3. **Verify.** Six deterministic checks run first. The PR must be in the repo, merged, into the default branch, by the claimant and after funding, and **GitHub must report the alert `fixed`**. If all pass, an **AI agent** (Groq `gpt-oss-120b`) reviews the evidence. It uses two tools: the **PayPal Agent Toolkit**'s `get_order`, to confirm the bounty was captured, and a read-only view of the PR's diffs, to confirm the vulnerable package was actually updated. It then recommends pay or don't pay, with reasons and risks.
+4. **Approve.** A maintainer who isn't the claimant approves. PORT4LLEO re-checks GitHub, then pays through **PayPal Payouts**. The fix appears on the developer's public portfolio as a paid security fix.
+5. **Cancel.** An unclaimed bounty can be cancelled and refunded through the PayPal Payments API.
+
+**The agent can't move money.** It has no payout tool. A failed check, or a PayPal order the tool didn't itself see as `COMPLETED` for *this* bounty, overrides any "pay". A human approves every payout. Pull request content is treated as untrusted.
+
+**Sandbox only.** Live mode needs both `PAYPAL_ENV=live` and `PAYPAL_ALLOW_LIVE=true`. In production, holding funds and paying third parties requires PayPal's marketplace (multiparty) onboarding and a compliance review, which this project has not done.
 
 ## Privacy
 
@@ -129,6 +150,8 @@ Layout: GitHub collectors and App auth are in `src/lib/github`, heuristics in `s
 
 ## Known limitations
 
+- Fix bounties run in the PayPal sandbox; see above for what production would require. Bounties cover Dependabot alerts only, because those are the findings GitHub itself marks as fixed.
+
 - Integrations are read from **root** manifests only, so packages inside a monorepo are missed.
 - "Test runs passed" counts runs, not test cases. GitHub doesn't expose test-case counts.
 - Actions and test runs are all-time counts with no recency decay.
@@ -137,6 +160,37 @@ Layout: GitHub collectors and App auth are in `src/lib/github`, heuristics in `s
 - Governance audits are capped per run (see above), so large organizations are covered 25 repos at a time, most recently active first.
 - The daily cron audits 3 installations per run (Vercel Hobby allows one cron run a day). Installs, repository additions and on-demand runs trigger audits immediately.
 - PII patterns are deliberately broad. Findings are candidates to confirm, and paths that look like tests, fixtures or examples are marked likely benign.
+
+## Work in open PRs
+
+These are not on `main` and not live:
+
+- [#13](https://github.com/axxess-triaxis/port4lleo/pull/13) Fix bounties: PayPal-funded, AI-verified security fixes (the "product improvements" part).
+- [#15](https://github.com/axxess-triaxis/port4lleo/pull/15) Claude plugin: link to a PORT4LLEO account (tokens, portfolio, resync).
+- [#16](https://github.com/axxess-triaxis/port4lleo/pull/16) Claude plugin: read-only fix bounties for linked accounts.
+
+## Part of the Triaxis stack
+
+[Triaxis Ventures Private Limited](https://github.com/axxess-triaxis) sells one product,
+**AXXESS TRIaxis**. The other products below run the company itself. Triaxis Ventures is
+Tenant 0, the dogfooded tenant, on every one of them, AXXESS included. **STILL** joins them
+into one stack.
+
+| Product | Its job in the stack | State, checked 2026-10-29 |
+|---|---|---|
+| [AXXESS TRIaxis](https://github.com/axxess-triaxis/AXXESSTRIAXIS) | The product we sell: an AI operating platform with governance and a human in the loop | Product: [investor.triaxisventures.com](https://investor.triaxisventures.com) (demo); [Live Beta](https://landing.triaxisventures.com) (sign-in) |
+| [PORT4LLEO](https://github.com/axxess-triaxis/port4lleo) | Governance, security checks, builder analysis, product improvements | Live at [port4leo-sigma.vercel.app](https://port4leo-sigma.vercel.app) |
+| [Callismatic](https://github.com/axxess-triaxis/callismatic) | Sales and outreach: triages inbound calls and messages, researches leads, places callbacks | Live on AWS Lambda (us-east-1); publishes to STILL since 2026-10-29, verified end to end |
+| [Omnidamus](https://github.com/axxess-triaxis/Omnidamus) | SMS, WhatsApp and email outreach and customer service | Deployed on AWS (ap-southeast-2); publishes to STILL since 2026-10-29, verified end to end; WhatsApp replies blocked on Meta's display-name review |
+| [STILL](https://github.com/axxess-triaxis/STILL) | The event bus that joins them: Callismatic leads and Omnidamus completed conversations become AXXESS tasks | Deployed (EventBridge, ap-southeast-2); STILL to AXXESS verified live 2026-10-29 |
+
+The founder's aim is a roughly 80% automated company with the founder as the human in the
+loop: AXXESS building, selling, serving customers, testing and doing outreach on itself through
+these products, as a repeatable, very low-cost prototype of an AI-native startup. The founder
+also states that every product except AXXESS TRIaxis was built at zero incremental cost.
+*Both are founder-stated, source artifact needed.* The known running costs are small and paid
+from AWS credits: STILL is estimated at under USD 2 a month, Omnidamus keeps a Route 53 zone at
+USD 0.50 a month, and Amazon Bedrock tokens are billed per use.
 
 ## License
 
