@@ -28259,6 +28259,71 @@ function computeScore(m, now = new Date(m.collectedAt)) {
   return { score, tier: tierFor(score), metrics, categories };
 }
 
+// src/plugin/remote.ts
+var DEFAULT_BASE_URL = "https://port4leo-sigma.vercel.app";
+var TOKEN_RE = /^p4l_[A-Za-z0-9_-]{43}$/;
+var REMOTE_ACTIONS = {
+  portfolio: { method: "GET", path: "/api/plugin/portfolio", timeoutMs: 3e4 },
+  resync: { method: "POST", path: "/api/plugin/resync", timeoutMs: 31e4 }
+};
+var RemoteError = class extends Error {
+  constructor(message, status = null) {
+    super(message);
+    this.status = status;
+  }
+};
+var NOT_LINKED = `Not linked to a PORT4LLEO account. Create a token on your PORT4LLEO dashboard ("Claude plugin: link your account") and set it as this plugin's api_token option, or as PORT4LLEO_TOKEN when running the script directly.`;
+function setting(v) {
+  const t = v?.trim();
+  return t && !t.includes("${") ? t : void 0;
+}
+function remoteConfig(env = process.env) {
+  const token = setting(env.PORT4LLEO_TOKEN);
+  if (!token) throw new RemoteError(NOT_LINKED);
+  if (!TOKEN_RE.test(token)) throw new RemoteError("The PORT4LLEO token is malformed: it should start with p4l_. Copy it again from the dashboard.");
+  const raw = setting(env.PORT4LLEO_URL) ?? DEFAULT_BASE_URL;
+  let url2;
+  try {
+    url2 = new URL(raw);
+  } catch {
+    throw new RemoteError(`PORT4LLEO base URL is not a URL: ${raw}`);
+  }
+  const local = url2.hostname === "localhost" || url2.hostname === "127.0.0.1" || url2.hostname === "[::1]";
+  if (url2.protocol !== "https:" && !(local && url2.protocol === "http:")) {
+    throw new RemoteError(`PORT4LLEO base URL must use https: ${url2.origin}`);
+  }
+  return { token, baseUrl: url2.origin };
+}
+async function remoteCall(action, cfg, fetchImpl = fetch) {
+  const { method, path, timeoutMs } = REMOTE_ACTIONS[action];
+  let res;
+  try {
+    res = await fetchImpl(cfg.baseUrl + path, {
+      method,
+      headers: { Authorization: `Bearer ${cfg.token}`, Accept: "application/json" },
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+  } catch (e) {
+    throw new RemoteError(`Could not reach ${cfg.baseUrl}: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    const msg2 = typeof body?.error === "string" ? body.error : `HTTP ${res.status}`;
+    const retry = res.headers.get("retry-after");
+    throw new RemoteError(retry ? `${msg2} (retry after ${retry}s)` : msg2, res.status);
+  }
+  return body;
+}
+function remoteHeadline(action, out) {
+  const o = out ?? {};
+  switch (action) {
+    case "portfolio":
+      return o.score === null || o.score === void 0 ? `${o.login}: no stored score yet` : `${o.login}: ${o.score} (${o.tier}), last synced ${o.lastSyncedAt ?? "never"}`;
+    case "resync":
+      return `${o.login}: re-synced, ${o.score} (${o.tier})`;
+  }
+}
+
 // src/plugin/cli.ts
 var UsageError = class extends Error {
 };
@@ -28389,8 +28454,9 @@ var HELP = `port4lleo <command>
   portfolio show <login>                     Fetch and check <login>/<login>/portfolio.yml
   activity <account> [--date YYYY-MM-DD]     Was there GitHub activity that day?
   daily <account>                            Activity check; if active, score + audit
+  remote portfolio | resync                  Linked PORT4LLEO account (PORT4LLEO_TOKEN, PORT4LLEO_URL)
 Global: --log-dir <dir>  --out <file>  --full (print full audit report)`;
-async function run(argv, makeClient = (t) => createGitHubClient(t)) {
+async function run(argv, makeClient = (t) => createGitHubClient(t), env = process.env, fetchImpl = fetch) {
   const args = parseArgs(argv);
   const target = args.positional[0];
   const need = (what) => {
@@ -28453,6 +28519,12 @@ ${HELP}`);
         target: account
       };
     }
+    case "remote": {
+      const action = args.positional[0];
+      if (!action || !Object.hasOwn(REMOTE_ACTIONS, action)) throw new UsageError(HELP);
+      const out = await remoteCall(action, remoteConfig(env), fetchImpl);
+      return { output: out, headline: remoteHeadline(action, out), command: `remote-${action}`, target: "account" };
+    }
     default:
       throw new UsageError(HELP);
   }
@@ -28485,5 +28557,81 @@ async function main(argv = process.argv.slice(2)) {
   }
 }
 
+// src/plugin/mcp.ts
+import { createInterface } from "node:readline";
+var SUPPORTED_PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
+var TOOLS = [
+  {
+    name: "remote_portfolio",
+    action: "portfolio",
+    description: "The linked PORT4LLEO account's stored Builder Score, tier, last sync time and public portfolio URL, as the website shows them.",
+    readOnly: true
+  },
+  {
+    name: "remote_resync",
+    action: "resync",
+    description: "Ask the PORT4LLEO website to re-collect the linked account's metrics from GitHub and store a new score. Allowed once an hour; takes up to a few minutes.",
+    readOnly: false
+  }
+];
+async function handleMcpMessage(msg2, deps) {
+  const isNotification = msg2.id === void 0 || msg2.id === null;
+  const reply = (result) => ({ jsonrpc: "2.0", id: msg2.id, result });
+  const fail = (code, message) => ({ jsonrpc: "2.0", id: msg2.id ?? null, error: { code, message } });
+  switch (msg2.method) {
+    case "initialize": {
+      const asked = String(msg2.params?.protocolVersion ?? "");
+      return reply({
+        protocolVersion: SUPPORTED_PROTOCOLS.includes(asked) ? asked : SUPPORTED_PROTOCOLS[0],
+        capabilities: { tools: {} },
+        serverInfo: { name: "port4lleo", version: deps.version }
+      });
+    }
+    case "ping":
+      return reply({});
+    case "tools/list":
+      return reply({
+        tools: TOOLS.map((t) => ({
+          name: t.name,
+          description: t.description,
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+          annotations: { readOnlyHint: t.readOnly, destructiveHint: false, openWorldHint: true }
+        }))
+      });
+    case "tools/call": {
+      const tool = TOOLS.find((t) => t.name === msg2.params?.name);
+      if (!tool) return fail(-32602, `Unknown tool: ${String(msg2.params?.name)}`);
+      try {
+        const out = await remoteCall(tool.action, remoteConfig(deps.env), deps.fetchImpl);
+        const text = JSON.stringify({ headline: remoteHeadline(tool.action, out), result: out }, null, 2);
+        return reply({ content: [{ type: "text", text }] });
+      } catch (e) {
+        const text = e instanceof RemoteError ? e.message : `Unexpected error: ${e instanceof Error ? e.message : String(e)}`;
+        return reply({ content: [{ type: "text", text }], isError: true });
+      }
+    }
+    default:
+      return isNotification ? null : fail(-32601, `Method not found: ${msg2.method}`);
+  }
+}
+function serveMcp(deps) {
+  const rl = createInterface({ input: process.stdin });
+  rl.on("line", (line) => {
+    if (!line.trim()) return;
+    let msg2;
+    try {
+      msg2 = JSON.parse(line);
+    } catch {
+      process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }) + "\n");
+      return;
+    }
+    void handleMcpMessage(msg2, deps).then((res) => {
+      if (res) process.stdout.write(JSON.stringify(res) + "\n");
+    });
+  });
+}
+
 // src/plugin/main.ts
-void main();
+var VERSION = "0.2.0";
+if (process.argv[2] === "mcp") serveMcp({ env: process.env, fetchImpl: fetch, version: VERSION });
+else void main();

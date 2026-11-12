@@ -10,6 +10,12 @@ import { computeScore } from "@/lib/scoring/score";
 
 export const SYNC_COOLDOWN_MS = 60 * 60 * 1000;
 
+/** Milliseconds until an on-demand sync is allowed again (0 = now). */
+export function syncCooldownRemainingMs(lastSyncedAt: string | null | undefined, now = Date.now()): number {
+  const last = lastSyncedAt ? new Date(lastSyncedAt).getTime() : 0;
+  return Math.max(0, last + SYNC_COOLDOWN_MS - now);
+}
+
 export interface SyncResult {
   score: number;
   tier: string;
