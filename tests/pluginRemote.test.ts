@@ -56,6 +56,16 @@ describe("CLI remote", () => {
     expect((fetchImpl.mock.calls[0] as unknown[])[0]).toBe(`${DEFAULT_BASE_URL}/api/plugin/portfolio`);
   });
 
+  it("lists bounties read-only (GET, no body)", async () => {
+    const fetchImpl = vi.fn(async () => Response.json({ bounties: [{ id: "b1" }], reposChecked: 3 }));
+    const out = await run(["remote", "bounties"], undefined, { PORT4LLEO_TOKEN: TOKEN }, fetchImpl as typeof fetch);
+    expect(out.headline).toBe("1 live bounty across 3 accessible repos plus the public board");
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe(`${DEFAULT_BASE_URL}/api/plugin/bounties`);
+    expect(init.method).toBe("GET");
+    expect(init.body).toBeUndefined();
+  });
+
   it("rejects unknown remote actions", async () => {
     await expect(run(["remote", "fund"], undefined, { PORT4LLEO_TOKEN: TOKEN })).rejects.toThrow(/port4lleo <command>/);
     await expect(run(["remote", "toString"], undefined, { PORT4LLEO_TOKEN: TOKEN })).rejects.toThrow(/port4lleo <command>/);
