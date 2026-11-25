@@ -195,3 +195,6 @@ USD 0.50 a month, and Amazon Bedrock tokens are billed per use.
 ## License
 
 MIT
+
+<!-- readme-activity:start (generated; edits here are overwritten) -->
+<!-- readme-activity:end -->
